@@ -1,0 +1,19 @@
+# Dependencies and build output
+node_modules/
+dist/
+coverage/
+*.tsbuildinfo
+
+# Local credentials and environment
+.env
+.env.*
+!.env.example
+
+# Local agent state, worktrees, and runtime artifacts
+.agent/
+.worktrees/
+.dsh-codeasier/
+
+# Logs and operating-system files
+*.log
+.DS_Store

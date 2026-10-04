@@ -38,6 +38,8 @@ pnpm plugin:new handoff-notes --kind skill
 
 **尚未发布的开发实现。** 仓库已包含后端、证据闸门、裁决、持久化恢复和可选适配器，不是仅有 Skill 的原型。目前不提供活动 profile 安装或发布承诺。原始交付以当时从 npm `latest` 选择的 DSH `0.2.0-rc.2` 能力为范围；这不是对现在移动 registry 标签的断言。[Issue #1](https://github.com/codeasier/dsh-codeasier/issues/1) 仍记录更广的路线图。验证边界见[契约与验收矩阵](docs/contracts.zh-CN.md)。已检查的原生 TUI 组合缺少 `/review` 所需的公开、清单感知的 Component 准入步骤；[已验证的集成缺口](docs/tui-admission-gap.zh-CN.md)记录了适配器自身激活上下文收到的拒绝和公开 API 边界。完整 TUI 验收尚未通过。
 
+[Session-review 调查](docs/session-review-investigation.zh-CN.md)记录 issue #11 固定版本的公开 live/cold 读取契约及授权边界；只交付双语报告和离线测试，不是 session-review 插件或导出器。
+
 ## 架构
 
 ```text

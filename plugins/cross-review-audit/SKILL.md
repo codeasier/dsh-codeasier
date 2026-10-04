@@ -23,6 +23,6 @@ Write a concise report:
 
 Native timestamps use `Date.now`, not a monotonic clock. Clock rollback or recovery of future-dated records is `insufficient-evidence`, not proof of a lifecycle violation; do not infer revision history from timestamp ordering.
 
-`status` and `report` separately read current records. Different revisions produce `insufficient-evidence`; do not compare them as one snapshot or poll/retry automatically. `pass` establishes only the stated persisted/derived check, not a full execution transcript. No OpenCode polling counts, transport rules or P0–P3 scoring apply to this DSH audit.
+`status` and `report` separately read current records. Run ID and snapshot ID are immutable across revisions: mismatches are `report.identity` anomalies regardless of revision. Only identity-matching observations at different revisions produce `insufficient-evidence`; do not compare their state/results as one snapshot or poll/retry automatically. `pass` establishes only the stated persisted/derived check, not a full execution transcript. No OpenCode polling counts, transport rules or P0–P3 scoring apply to this DSH audit.
 
 Adapted semantic scope/instruction structure from codeasier/open-codeasier, fixed revision `20194ff7a7b26fd51965e50bdb5091cb37a4c0f5`, `src/cross-review/audit{,-checks,-project,-types}.ts` and `skills/cross-review-audit/SKILL.md`. MIT, Copyright (c) 2026 codeasier; retained notice in [LICENSE](LICENSE). No OpenCode transport, run-store or polling implementation is copied.

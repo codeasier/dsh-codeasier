@@ -190,9 +190,19 @@ test('report comparison is bound to one revision; concurrent service reads never
   assert.equal(Object.isFrozen(callerReport), false); assert.equal(Object.isFrozen(callerReport.audit), false);
   callerReport.complete = false;
   assert.equal((check(detached, 'report.consistency').facts as { observed: typeof report }).observed.complete, true);
-  for (const change of [(r: any) => { r.reviewerCompleted = 0; }, (r: any) => { r.runId = randomUUID(); }, (r: any) => { r.snapshotId = 'unbound'; }, (r: any) => { r.complete = false; }, (r: any) => { r.state = 'cancelled'; }, (r: any) => { r.audit = []; }]) {
+  for (const change of [(r: any) => { r.reviewerCompleted = 0; }, (r: any) => { r.complete = false; }, (r: any) => { r.state = 'cancelled'; }, (r: any) => { r.audit = []; }]) {
     const changed = structuredClone(report); change(changed);
     assert.equal(check(Audit.inspectAuditSnapshot({ record, report: changed }), 'report.consistency').result, 'anomaly');
+  }
+  for (const revision of [report.revision - 1, report.revision, report.revision + 1]) {
+    for (const wrongIdentity of [{ runId: randomUUID() }, { snapshotId: 'unbound' }]) {
+      const changed = { ...report, revision, ...wrongIdentity };
+      const result = Audit.inspectAuditSnapshot({ record, report: changed });
+      assert.equal(check(result, 'report.identity').result, 'anomaly');
+      assert.equal(check(result, 'report.consistency').result, 'cannot-verify');
+      const observed = await Audit.auditRun({ status: (agent, id) => f.ctx.crossReview.status(agent, id), report: async () => changed }, f.parent, record.id, new AbortController().signal);
+      assert.equal(check(observed, 'report.identity').result, 'anomaly', 'request-bound public audit API also checks cross-revision immutable identity');
+    }
   }
   for (const changed of [{ ...report, revision: report.revision + 1, complete: false }, { ...report, revision: report.revision - 1, reviewerCompleted: 0 }]) {
     const result = Audit.inspectAuditSnapshot({ record, report: changed });

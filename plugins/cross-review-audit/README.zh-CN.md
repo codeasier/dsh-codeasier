@@ -35,7 +35,7 @@
 
 `pass` 仅验证已指明的持久化/派生事实。`anomaly` 表示有证据的矛盾。`insufficient-evidence` 表示比较或来源信息不完整。`cannot-verify` 表示现有公开契约无法证明（包括未知 schema/policy 版本）。这些都不是 finding 质量评分或正确性投票。
 
-**并发读取：** status/report 各自读取当前记录。不同 revision 标记为 `insufficient-evidence`，不是一致性异常；不启动重试/轮询。读取之间发生 cleanup 时，保留已绑定 status 的审计，并明确 report 无法验证。Status 的所有权/存储读取失败作为原生工具错误返回，不伪造运行审计。纯检查器的异常/未知版本夹具独立验证诊断；真实存储可能在服务观察之前就拒绝这些记录，不能绕过校验。
+**并发读取：** status/report 各自读取当前记录。run ID 和 snapshot ID 跨修订不可变，任何不匹配都属于 `report.identity` 异常。只有身份匹配而 revision 不同才标为 `insufficient-evidence`，不推断状态/结果一致性异常；不启动重试/轮询。读取之间发生 cleanup 时，保留已绑定 status 的审计，并明确 report 无法验证。Status 的所有权/存储读取失败作为原生工具错误返回，不伪造运行审计。纯检查器的异常/未知版本夹具独立验证诊断；真实存储可能在服务观察之前就拒绝这些记录，不能绕过校验。
 
 **时钟不确定性：** 原生记录使用 `Date.now`，没有单调时钟保证。时间戳倒退或恢复未来时间记录标为 `insufficient-evidence`，不证明生命周期违约；不能由时间戳顺序推断修订历史内容。
 

@@ -39,7 +39,7 @@
 | 拒绝不泄露内容/存在性 | **仅测试策略组合已证实**，SQ4 拒绝不查询；SQ18 实际运行原生单调工具 guard：存在和不存在的未授权目标均返回同样 `Error: SESSION_ACCESS_DENIED`，拒绝的 body 不执行，显式授权的自身目标执行一次。不能据此宣称产品 review tool 已授权 | L/T；测试专用 guard 策略 |
 | 缺 query/persistence/target 与空历史 | **相应能力不可用或历史为空**，SQ2：未挂 backend 时无 `sessionQuery`；无 persistence 的 cold id 和未知 id 返回 `SESSION_QUERY_SESSION_NOT_FOUND`；空 live 返回 `[]`；`never` 下搜索返回 `SESSION_QUERY_SEARCH_DISABLED` | Q/B/P |
 | Live 优先与 detached 结果 | **已证实**，SQ5 query 有 live-only 尾部，公开 persisted handle 只有前缀；修改返回 header/event 不影响后续读取 | Q/S/P |
-| Persisted-not-loaded 读取 | **已证实**，SQ6 关闭 Context 后对隔离 JSONL store 重建 Context；`readSession`、`observeSession` 返回历史、`source: 'prepared'`、revision 和精确 cursor，不加载 Session、不创建 Agent | Q/B/P |
+| Persisted-not-loaded 读取 | **已证实**，SQ6 关闭 Context 后对隔离 JSONL store 重建 Context；`readSession`、`observeSession` 返回历史、`source: 'prepared'`、revision 和精确 cursor，不会将 Session 注册/附着为 live，也不会创建 Agent。Cold query 可以构造未发布的 prepared Session；registry 断言只证明未附着，不证明未构造对象 | Q/B/P |
 | 可选 persistence 故障 | **负面夹具已证实**，SQ7 公开 persistence service 子类让 list/stat/open 失败，cold 返回 `SESSION_QUERY_PERSISTENCE_FAILED`；已知 live 读取/observation 不调用后端仍成功。真实磁盘 I/O corruption 未验证 | Q/P |
 | 原始 logs 与 current surface 同切点 | **已证实**，SQ8 获取 `observeSession(..., {projectionMode: 'none'})` 租约，**延迟首次访问 events 前**追加新事件；对租约 events fold 得到 cursor `0`、一个原始 node/message。独立稍后的 `readSurface` 捕获 seq `1`，两次独立查询不是原子配对 | Q/S/F |
 | Calls/results、原始参数、成功/失败/未知工具、reasoning | **已证实**，SQ11 真实 scripted 生产 loop 记录 3 个 call 及对应 result、成功内容、`FIXTURE_FAILURE`、`UNKNOWN_TOOL`、原始参数 JSON、reasoning 和最终文本；显式 flush 后公开 persistence 与 query 一致。Reasoning 在原始消息中，但不进入文本扫描结果 | Q/S/P/L/T |
@@ -96,7 +96,7 @@
 
 **依赖：**声明直接固定公开包；设计可信 Host 策略，在每次 lookup/content read 前绑定真实 caller identity + 精确 target + 显式 intent；独立定义部署 scope/grant，不用 cwd/lineage 代替授权；保留原生 effective tool policy 和单调 guard，不允许 reviewer 旁路。确定同切点 projected/raw evidence schema、secret/attachment 策略、synthetic 来源不确定性，以及确定性的 message/part/total-byte 预算。其他 profile/history format/projection plugin 单独验收，不静默支持。
 
-**验收：**产品 tool 测试必须重新覆盖显式 target 校验，owner/granted 允许及同 cwd/父子/异项目拒绝，存在性中立且不访问 backend 的拒绝，缺失/空/不可用诊断，live 和重开 cold 成功且不加载 Session，同切点 raw/current 并发 append，call/result/unknown/failure attempt、compaction/inherited 边界、synthetic unknown outcome，独立 clipping/omission、UTF-8 与 hard total-byte cap，释放/取消、凭据脱敏及 cross-review 原限制不变。使用离线 scripted adapter 和双语 docs 检查，不跑付费模型、不安装 profile。SQ4/SQ15/SQ18 只是策略/预算可行性探针，不满足后续产品 tool 验收。
+**验收：**产品 tool 测试必须重新覆盖显式 target 校验，owner/granted 允许及同 cwd/父子/异项目拒绝，存在性中立且不访问 backend 的拒绝，缺失/空/不可用诊断，live 成功及重开 cold 成功且不会将 cold Session 注册/附着为 live，也不会创建 Agent，同切点 raw/current 并发 append，call/result/unknown/failure attempt、compaction/inherited 边界、synthetic unknown outcome，独立 clipping/omission、UTF-8 与 hard total-byte cap，释放/取消、凭据脱敏及 cross-review 原限制不变。使用离线 scripted adapter 和双语 docs 检查，不跑付费模型、不安装 profile。SQ4/SQ15/SQ18 只是策略/预算可行性探针，不满足后续产品 tool 验收。
 
 **显式导出输入候选：**若部署不能挂载已授权 public query，未来工具可以考虑用户提供、明确选定的数据，但**必须先**单独确定 schema/source/cut/integrity/loss/size/secret 契约。本次不承诺已确认 exporter/format；测试没有生成或消费导出。其授权、时效、来源和完整性均**未验证**。不自动选择 exporter，也不回退私有数据库。
 

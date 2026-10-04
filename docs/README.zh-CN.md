@@ -8,6 +8,7 @@
 |---|---|---|
 | 仓库概览与开发检查 | [Overview](../README.md) / [Checks](../README.md#development) | [概览](../README.zh-CN.md) / [开发检查](../README.zh-CN.md#开发与验证) |
 | cross-review 配置、工具与生命周期 | [Plugin guide](../plugins/cross-review/README.md) | [插件指南](../plugins/cross-review/README.zh-CN.md) |
+| 单 issue worktree 修复、用户工作保护与检查证据（纯 Skill） | [issue-resolve](../plugins/issue-resolve/README.md) | [issue-resolve 指南](../plugins/issue-resolve/README.zh-CN.md) |
 | 插件集合架构与兼容策略 | [Architecture](architecture.md) | [架构说明](architecture.zh-CN.md) |
 | 新增插件、Skill 资源与 OpenCode 迁移 | [Development and migration](plugin-development.md) | [开发与迁移](plugin-development.zh-CN.md) |
 | 公开契约、验收与安全边界 | [Contracts](contracts.md) | [契约与验收](contracts.zh-CN.md) |

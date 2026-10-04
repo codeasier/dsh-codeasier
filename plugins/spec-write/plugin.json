@@ -1,0 +1,8 @@
+{
+  "schemaVersion": 1,
+  "id": "spec-write",
+  "kind": "skill",
+  "status": "implemented",
+  "description": "An implementation-ready three-file spec package, never product implementation.",
+  "skill": "plugins/spec-write/SKILL.md"
+}

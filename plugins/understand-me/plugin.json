@@ -1,0 +1,8 @@
+{
+  "schemaVersion": 1,
+  "id": "understand-me",
+  "kind": "skill",
+  "status": "implemented",
+  "description": "One question at a time, dependency-ordered decisions and explicit consensus.",
+  "skill": "plugins/understand-me/SKILL.md"
+}

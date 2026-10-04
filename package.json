@@ -1,0 +1,67 @@
+{
+  "name": "dsh-codeasier",
+  "version": "0.0.0",
+  "private": true,
+  "packageManager": "pnpm@11.21.0",
+  "type": "module",
+  "description": "Native DSH cross-review backend with an optional shared-service TUI adapter",
+  "license": "MIT",
+  "engines": { "node": ">=22.19" },
+  "main": "./dist/host.js",
+  "types": "./dist/host.d.ts",
+  "exports": {
+    ".": { "types": "./dist/host.d.ts", "default": "./dist/host.js" },
+    "./tui": { "types": "./dist/tui.d.ts", "default": "./dist/tui.js" },
+    "./protocol": { "types": "./dist/protocol.d.ts", "default": "./dist/protocol.js" },
+    "./package.json": "./package.json",
+    "./cordis.patch.yml": "./cordis.patch.yml"
+  },
+  "files": ["dist", "cordis.patch.yml", "dsh-plugin.json", "README.md", "docs", "LICENSE"],
+  "dsh": { "bundle": { "patch": "./cordis.patch.yml" } },
+  "peerDependencies": {
+    "@deepseek-ai/cordis": "4.0.4",
+    "@deepseek-ai/dsh": "0.2.0-rc.2",
+    "@deepseek-harness-tui/dsh-tui": "0.12.0"
+  },
+  "peerDependenciesMeta": {
+    "@deepseek-ai/dsh": { "optional": true },
+    "@deepseek-harness-tui/dsh-tui": { "optional": true }
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "test": "node --import tsx --test test/*.test.mjs test/*.test.ts",
+    "test:contracts": "node --test test/native-contracts.test.mjs",
+    "test:types": "tsc -p tsconfig.test.json",
+    "test:package": "DSH_CODEASIER_PACKAGE_TEST=1 node --test test/package.test.mjs",
+    "test:dsh-profile": "DSH_CODEASIER_TUI_PROFILE_TEST=1 DSH_CODEASIER_PROFILE_REQUIRE_COMMAND=0 node --import tsx --test test/tui-profile.test.ts",
+    "test:tui-profile": "DSH_CODEASIER_TUI_PROFILE_TEST=1 DSH_CODEASIER_PROFILE_REQUIRE_COMMAND=1 node --import tsx --test test/tui-profile.test.ts",
+    "check": "pnpm run build && pnpm run test:types && pnpm test"
+  },
+  "devDependencies": {
+    "@deepseek-ai/cordis": "4.0.4",
+    "@deepseek-ai/dsh-agent-loop-testkit": "0.2.0-rc.2",
+    "@deepseek-ai/cordis-plugin-loader": "1.0.5",
+    "@deepseek-ai/dsh-user-questions": "0.2.0-rc.2",
+    "@deepseek-ai/dsh-subagent-spawn-in-process": "0.2.0-rc.2",
+    "@deepseek-harness-tui/dsh-tui": "0.12.0",
+    "@types/node": "22.20.5",
+    "tsx": "4.20.6",
+    "typescript": "5.9.3"
+  },
+  "dependencies": {
+    "@deepseek-ai/dsh-agent": "0.2.0-rc.2",
+    "@deepseek-ai/dsh-atomic-write": "0.2.0-rc.2",
+    "@deepseek-ai/dsh-commands": "0.2.0-rc.2",
+    "@deepseek-ai/dsh-llm": "0.2.0-rc.2",
+    "@deepseek-ai/dsh-session": "0.2.0-rc.2",
+    "@deepseek-ai/dsh-storage": "0.2.0-rc.2",
+    "@deepseek-ai/dsh-storage-domain": "0.2.0-rc.2",
+    "@deepseek-ai/dsh-storage-json": "0.2.0-rc.2",
+    "@deepseek-ai/dsh-subagent": "0.2.0-rc.2",
+    "@deepseek-ai/dsh-subagent-in-process-driver": "0.2.0-rc.2",
+    "@deepseek-ai/dsh-tools": "0.2.0-rc.2",
+    "@deepseek-ai/dsh-user-approval": "0.2.0-rc.2",
+    "@deepseek-ai/schemastery": "3.18.4",
+    "zod": "4.4.3"
+  }
+}

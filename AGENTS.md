@@ -2,7 +2,7 @@
 
 ## Project goal
 
-Implement complete DSH-native cross-review orchestration with an optional dsh-TUI adapter. The current repository is a planning/bootstrap baseline; no runnable plugin or verification commands exist yet.
+Implement complete DSH-native cross-review orchestration with an optional dsh-TUI adapter. The repository now contains an unreleased Host implementation, an optional TUI adapter, and offline contract/regression checks. The current delivery scope is capabilities supported by npm-latest DSH: native review/report/control tools with honest optional-TUI degradation. Verify `test:dsh-profile` before claiming that scope; the broader mediated-command `test:tui-profile` gate remains separate. No active-profile installation or release support is implied.
 
 Do not reduce the first deliverable to a Skill-only prototype. Implementation may proceed in modules, but acceptance covers the complete backend, recovery/audit contracts, and TUI consumption.
 

@@ -1,0 +1,5 @@
+# Host only. Configure an absolute, private local root and explicit reviewers
+# in a user overlay before enabling this unreleased development bundle.
+- insert:
+    - id: cross-review
+      name: dsh-codeasier

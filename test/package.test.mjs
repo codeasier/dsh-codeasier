@@ -50,6 +50,13 @@ test('packed Host and optional entry import in a production-only project without
     const host = await import('dsh-codeasier');
     assert.equal(typeof host.apply, 'function');
     assert.equal(typeof host.CrossReviewService, 'function');
+    const audit = await import('dsh-codeasier/plugins/cross-review-audit');
+    assert.equal(audit.name, 'cross-review-audit');
+    assert.equal(typeof audit.apply, 'function');
+    assert.deepEqual(audit.inject, ['tools', 'crossReview']);
+    assert.ok(require.resolve('dsh-codeasier/plugins/cross-review-audit/plugin.json'));
+    assert.ok(require.resolve('dsh-codeasier/plugins/cross-review-audit/cordis.patch.yml'));
+    assert.ok(require.resolve('dsh-codeasier/plugins/cross-review-audit/SKILL.md'));
     const canonical = await import('dsh-codeasier/plugins/cross-review');
     assert.deepEqual(Object.keys(canonical), Object.keys(host));
     for (const key of Object.keys(host)) assert.equal(canonical[key], host[key]);

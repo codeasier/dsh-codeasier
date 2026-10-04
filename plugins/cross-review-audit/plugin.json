@@ -1,0 +1,10 @@
+{
+  "schemaVersion": 1,
+  "id": "cross-review-audit",
+  "kind": "native",
+  "status": "implemented",
+  "description": "Owner-validated read-only native cross-review contract and immutable evidence audit; no models or run controls.",
+  "entry": "dsh-codeasier/plugins/cross-review-audit",
+  "defaultEnabled": false,
+  "patch": "plugins/cross-review-audit/cordis.patch.yml"
+}

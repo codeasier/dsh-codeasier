@@ -18,6 +18,7 @@
 | issue-submit 模板、必填字段与确认投稿（纯 Skill） | [Submission guide](../plugins/issue-submit/README.md) | [Issue 投稿指南](../plugins/issue-submit/README.zh-CN.md) |
 | 单 issue worktree 修复、用户工作保护与检查证据（纯 Skill） | [issue-resolve](../plugins/issue-resolve/README.md) | [issue-resolve 指南](../plugins/issue-resolve/README.zh-CN.md) |
 | pr-followup 反馈分类、逐项确认与离线演练 | [Skill guide](../plugins/pr-followup/README.md) | [Skill 指南](../plugins/pr-followup/README.zh-CN.md) |
+| 显式启用的 cross-review-audit 契约、证据缺口与调用指令 | [Audit guide](../plugins/cross-review-audit/README.md) | [审计指南](../plugins/cross-review-audit/README.zh-CN.md) |
 | 插件集合架构与兼容策略 | [Architecture](architecture.md) | [架构说明](architecture.zh-CN.md) |
 | 新增插件、Skill 资源与 OpenCode 迁移 | [Development and migration](plugin-development.md) | [开发与迁移](plugin-development.zh-CN.md) |
 | 公开契约、验收与安全边界 | [Contracts](contracts.md) | [契约与验收](contracts.zh-CN.md) |

@@ -1,0 +1,7 @@
+# Standalone opt-in Host patch; requires an already mounted crossReview service.
+# Do not combine this insert with the package aggregate patch.
+- insert:
+    - id: cross-review-audit
+      name: dsh-codeasier/plugins/cross-review-audit
+      disabled: true
+      config: {}

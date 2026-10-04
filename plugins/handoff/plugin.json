@@ -1,0 +1,8 @@
+{
+  "schemaVersion": 1,
+  "id": "handoff",
+  "kind": "skill",
+  "status": "implemented",
+  "description": "Canonical project handoff creation and confirmed intake without automatic execution.",
+  "skill": "plugins/handoff/SKILL.md"
+}

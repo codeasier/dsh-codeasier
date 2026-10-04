@@ -1,0 +1,39 @@
+{
+  "$schema": "urn:dsh-codeasier:plugin-manifest:0.15",
+  "manifestVersion": "0.15",
+  "id": "dsh-codeasier.tui",
+  "name": "DSH Codeasier optional TUI adapter",
+  "version": "0.0.0",
+  "facets": {
+    "host": {
+      "entry": "./dist/tui.js",
+      "apiVersion": "v1alpha1"
+    }
+  },
+  "requires": {
+    "contracts": [
+      {
+        "apiVersion": "commands.dsh/v1alpha1",
+        "kind": "Command"
+      }
+    ]
+  },
+  "permissions": [
+    {
+      "name": "commands.invoke",
+      "scope": "cross-review-control",
+      "reason": "Invoke the shared owner- and revision-checked review command; this is not permission to bypass native cost approval."
+    }
+  ],
+  "contributes": {
+    "commands": [
+      {
+        "id": "cross-review-control",
+        "title": "Cross-review",
+        "description": "Consume the same backend through /review; report scenes and progress are optional public runtime capabilities."
+      }
+    ]
+  },
+  "subscriptions": [],
+  "license": "MIT"
+}

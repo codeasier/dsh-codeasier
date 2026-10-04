@@ -12,6 +12,8 @@
 |---|---|---|
 | [cross-review](plugins/cross-review/README.zh-CN.md) | `dsh-codeasier/plugins/cross-review` | 原生评审、报告、控制、证据绑定与持久化恢复 |
 | cross-review 可选 TUI | `dsh-codeasier/plugins/cross-review/tui` | 可选的公开 UI 能力；受宿主中介管理的命令准入仍有限制 |
+| [issue-review](plugins/issue-review/README.zh-CN.md) | `plugins/issue-review/SKILL.md` | 纯 Skill 证据评审与明确确认后的 GitHub 评论；不改代码 |
+| [issue-submit](plugins/issue-submit/README.zh-CN.md) | `plugins/issue-submit/SKILL.md` | 纯 Skill 模板发现、必填字段、完整预览与确认后的 GitHub 投稿 |
 
 ```text
 src/plugins/<id>/          # 插件自己的 Host/服务；可选 tui.ts
@@ -33,6 +35,8 @@ pnpm plugin:new handoff-notes --kind skill
 现有 `dsh-codeasier`、`/tui` 和 `/protocol` 导出继续作为兼容别名。默认 bundle 仍然只包含 cross-review，保留原来的 Loader id/name、工具 ID 和持久化状态格式。**每个插件只能选择一套入口别名和 patch，不能同时挂载旧入口与新入口。** `plugins/<id>/plugin.json` 是仓库自有元数据，不是 DSH 原生 bundle 清单，也不是可选 TUI 的 Component 清单。
 
 从[插件开发与迁移指南](docs/plugin-development.zh-CN.md)、[架构说明](docs/architecture.zh-CN.md)和 [cross-review 配置](plugins/cross-review/README.zh-CN.md)开始。
+
+Issue Skill 使用 live root DSH 问答和已检查的 github.com/gh `2.89.0` 契约。子代理交回待确认问题，没有明确确认就不写 issue/评论。纯数据资源和离线脚本化演练不等于原生授权/恢复强制执行、已安装 Skill 发现或已验证包/profile 支持。前置条件和限制见各插件指南。
 
 ## 当前状态
 
@@ -116,7 +120,7 @@ pnpm run check
 
 `pnpm run check` 默认跳过需要单独开启的打包和真实 TUI profile gate。构建后运行 `pnpm run test:package` 会本地打包，并在新的临时 HOME/store 中安装生产依赖，禁用依赖脚本；它需要 registry 访问，不依赖无关的开发者 npm 缓存。`pnpm run test:dsh-profile` 在真实、一次性的 DSH+TUI profile 中验证当前支持的原生评审、报告、修订控制和清理；只有明确的 fail-closed 诊断和原生工具提示同时出现，才接受可选命令被拒绝。`pnpm run test:tui-profile` 保留更严格、当前尚未满足的完整中介命令与报告场景验收。两个 profile gate 都要求 Node 22、Python 3、公开 DSH `0.2.0-rc.2` CLI 和本地构建的 tarball。临时 profile 会先固定并验证 pnpm `11.21.0`，不解析移动的 Corepack 默认版本。默认产物为 `.dsh-codeasier/package-acceptance/dsh-codeasier-0.0.0.tgz`（先构建、创建目录，再运行 `npm pack --ignore-scripts --pack-destination .dsh-codeasier/package-acceptance`）。`DSH_CODEASIER_TEST_CLI` 和 `DSH_CODEASIER_TEST_ARTIFACT` 可设为绝对路径以覆盖默认值。Gate 只安装到新建临时 HOME，显式对齐原生 AgentLoop 依赖组，禁用真实 provider 和无关 profile 功能，并在 PTY 中运行实际 TUI。只有证明受中介管理的 `/review` 注册、报告渲染、过期修订拒绝、清理和释放都成功，才能宣称完整 TUI 验收通过。
 
-本实现为原创。没有从 [open-codeasier](https://github.com/codeasier/open-codeasier) 复制 OpenCode 执行、轮询或权限兼容层。
+cross-review 实现为原创。Issue Skill 在各指南记录的修订上改编 [open-codeasier](https://github.com/codeasier/open-codeasier) 指令，保留署名和 MIT 声明。没有复制 OpenCode 执行、轮询或权限兼容层。
 
 ## 许可证
 

@@ -12,6 +12,8 @@ One npm package, independent native plugin entries and declarative Cordis compos
 |---|---|---|
 | [cross-review](plugins/cross-review/README.md) | `dsh-codeasier/plugins/cross-review` | Native review/report/control, evidence and durable recovery |
 | cross-review optional TUI | `dsh-codeasier/plugins/cross-review/tui` | Optional public UI capabilities; mediated command admission remains limited |
+| [issue-review](plugins/issue-review/README.md) | `plugins/issue-review/SKILL.md` | Skill-only evidence review and explicitly confirmed GitHub comment; no code edits |
+| [issue-submit](plugins/issue-submit/README.md) | `plugins/issue-submit/SKILL.md` | Skill-only template discovery, required fields, complete preview and confirmed GitHub submission |
 
 ```text
 src/plugins/<id>/          # feature-owned Host/service; optional tui.ts
@@ -33,6 +35,8 @@ Run these after the explicit dependency installation below. Scaffolds are marked
 The existing `dsh-codeasier`, `/tui` and `/protocol` exports remain compatibility aliases. The default bundle still contains only cross-review and keeps its original Loader id/name, tool IDs and state format. **Choose one alias/patch per plugin; do not mount old and new entries together.** `plugins/<id>/plugin.json` is local repository metadata, not DSH's native bundle manifest or the optional TUI Component manifest.
 
 Start with [plugin development and migration](docs/plugin-development.md), [architecture](docs/architecture.md), and [cross-review configuration](plugins/cross-review/README.md).
+
+The issue Skills use live-root DSH questions and the inspected github.com/gh `2.89.0` contract. Child Agents return pending questions; no explicit confirmation means no issue/comment write. Their pure data resources and offline scripted rehearsals are not native authorization/recovery enforcement, installed Skill discovery or verified package/profile support. See each guide for prerequisites and limitations.
 
 ## Status
 
@@ -116,7 +120,7 @@ Tests use disposable Git repositories, isolated state/HOME directories, real nat
 
 `pnpm run check` skips the separately opted-in package and real TUI profile gates. After building, `pnpm run test:package` packs locally and installs production dependencies in a new temporary HOME/store with dependency scripts disabled; it needs registry access rather than an unrelated developer npm cache. `pnpm run test:dsh-profile` verifies currently supported native review/report/revision-control/cleanup in a real disposable DSH+TUI profile, accepting a denied optional command only with explicit fail-closed diagnostics and native-tool guidance. `pnpm run test:tui-profile` retains the stricter, currently unmet full mediated-command/report-scene gate. Both require Node 22, Python 3, a public DSH `0.2.0-rc.2` CLI and a locally built tarball. The disposable profile pins and verifies pnpm `11.21.0` before installation, rather than resolving a moving Corepack default. The default artifact is `.dsh-codeasier/package-acceptance/dsh-codeasier-0.0.0.tgz` (build, create that directory and pack locally with `npm pack --ignore-scripts --pack-destination .dsh-codeasier/package-acceptance`). `DSH_CODEASIER_TEST_CLI` and `DSH_CODEASIER_TEST_ARTIFACT` accept absolute overrides. The gate installs only into a new temporary HOME, explicitly aligns the native AgentLoop cohort, disables real providers and unrelated profile features, and exercises the actual TUI in a PTY. It must prove mediated `/review` registration, report rendering, revision rejection, cleanup and disposal before full TUI acceptance can be claimed.
 
-This implementation is original. No OpenCode execution, polling or permission-compatibility layer is copied from [open-codeasier](https://github.com/codeasier/open-codeasier).
+The cross-review implementation is original. Issue Skills adapt attributed [open-codeasier](https://github.com/codeasier/open-codeasier) instructions at the revision recorded in their guides, with retained MIT notices. No OpenCode execution, polling or permission-compatibility layer is copied.
 
 ## License
 

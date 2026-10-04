@@ -30,7 +30,7 @@ async function scratch(t) {
 test('collection descriptors and native patch identities are canonical; default remains legacy-compatible Host-only', async () => {
   const plugins = await inspectPlugins(repository);
   const crossReview = plugins.find(plugin => plugin.id === 'cross-review');
-  assert.ok(crossReview);
+  assert.ok(crossReview, 'The legacy cross-review identity must remain in the collection');
   assert.equal(crossReview.kind, 'native'); assert.equal(crossReview.status, 'implemented');
   assert.equal(crossReview.entry, 'dsh-codeasier/plugins/cross-review');
   assert.deepEqual(crossReview.legacyEntries, ['dsh-codeasier']);

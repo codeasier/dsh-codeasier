@@ -4,28 +4,72 @@
   "private": true,
   "packageManager": "pnpm@11.21.0",
   "type": "module",
-  "description": "Native DSH cross-review backend with an optional shared-service TUI adapter",
+  "description": "Extensible DSH-native plugin collection, starting with cross-review and its optional TUI adapter",
   "license": "MIT",
-  "engines": { "node": ">=22.19" },
+  "engines": {
+    "node": ">=22.19"
+  },
   "main": "./dist/host.js",
   "types": "./dist/host.d.ts",
   "exports": {
-    ".": { "types": "./dist/host.d.ts", "default": "./dist/host.js" },
-    "./tui": { "types": "./dist/tui.d.ts", "default": "./dist/tui.js" },
-    "./protocol": { "types": "./dist/protocol.d.ts", "default": "./dist/protocol.js" },
+    ".": {
+      "types": "./dist/host.d.ts",
+      "default": "./dist/host.js"
+    },
+    "./tui": {
+      "types": "./dist/tui.d.ts",
+      "default": "./dist/tui.js"
+    },
+    "./protocol": {
+      "types": "./dist/protocol.d.ts",
+      "default": "./dist/protocol.js"
+    },
+    "./plugins/*": {
+      "types": "./dist/plugins/*/index.d.ts",
+      "default": "./dist/plugins/*/index.js"
+    },
+    "./plugins/*/tui": {
+      "types": "./dist/plugins/*/tui.d.ts",
+      "default": "./dist/plugins/*/tui.js"
+    },
+    "./plugins/*/protocol": {
+      "types": "./dist/plugins/*/protocol.d.ts",
+      "default": "./dist/plugins/*/protocol.js"
+    },
+    "./plugins/*/plugin.json": "./plugins/*/plugin.json",
+    "./plugins/*/cordis.patch.yml": "./plugins/*/cordis.patch.yml",
+    "./plugins/*/tui.patch.yml": "./plugins/*/tui.patch.yml",
+    "./plugins/*/SKILL.md": "./plugins/*/SKILL.md",
     "./package.json": "./package.json",
     "./cordis.patch.yml": "./cordis.patch.yml"
   },
-  "files": ["dist", "cordis.patch.yml", "dsh-plugin.json", "README.md", "docs", "LICENSE"],
-  "dsh": { "bundle": { "patch": "./cordis.patch.yml" } },
+  "files": [
+    "dist",
+    "cordis.patch.yml",
+    "dsh-plugin.json",
+    "README.md",
+    "README.zh-CN.md",
+    "docs",
+    "plugins",
+    "LICENSE"
+  ],
+  "dsh": {
+    "bundle": {
+      "patch": "./cordis.patch.yml"
+    }
+  },
   "peerDependencies": {
     "@deepseek-ai/cordis": "4.0.4",
     "@deepseek-ai/dsh": "0.2.0-rc.2",
     "@deepseek-harness-tui/dsh-tui": "0.12.0"
   },
   "peerDependenciesMeta": {
-    "@deepseek-ai/dsh": { "optional": true },
-    "@deepseek-harness-tui/dsh-tui": { "optional": true }
+    "@deepseek-ai/dsh": {
+      "optional": true
+    },
+    "@deepseek-harness-tui/dsh-tui": {
+      "optional": true
+    }
   },
   "scripts": {
     "build": "tsc -p tsconfig.json",
@@ -35,18 +79,24 @@
     "test:package": "DSH_CODEASIER_PACKAGE_TEST=1 node --test test/package.test.mjs",
     "test:dsh-profile": "DSH_CODEASIER_TUI_PROFILE_TEST=1 DSH_CODEASIER_PROFILE_REQUIRE_COMMAND=0 node --import tsx --test test/tui-profile.test.ts",
     "test:tui-profile": "DSH_CODEASIER_TUI_PROFILE_TEST=1 DSH_CODEASIER_PROFILE_REQUIRE_COMMAND=1 node --import tsx --test test/tui-profile.test.ts",
-    "check": "pnpm run build && pnpm run test:types && pnpm test"
+    "plugins:list": "node scripts/plugins.mjs list",
+    "plugins:check": "node scripts/plugins.mjs check",
+    "plugin:new": "node scripts/new-plugin.mjs",
+    "test:plugins": "node --import tsx --test test/plugin-repository.test.mjs test/plugin-scaffold-boundaries.test.mjs",
+    "test:docs": "node --test test/documentation.test.mjs",
+    "check": "pnpm run plugins:check && pnpm run build && pnpm run test:types && pnpm test"
   },
   "devDependencies": {
     "@deepseek-ai/cordis": "4.0.4",
-    "@deepseek-ai/dsh-agent-loop-testkit": "0.2.0-rc.2",
     "@deepseek-ai/cordis-plugin-loader": "1.0.5",
-    "@deepseek-ai/dsh-user-questions": "0.2.0-rc.2",
+    "@deepseek-ai/dsh-agent-loop-testkit": "0.2.0-rc.2",
     "@deepseek-ai/dsh-subagent-spawn-in-process": "0.2.0-rc.2",
+    "@deepseek-ai/dsh-user-questions": "0.2.0-rc.2",
     "@deepseek-harness-tui/dsh-tui": "0.12.0",
     "@types/node": "22.20.5",
     "tsx": "4.20.6",
-    "typescript": "5.9.3"
+    "typescript": "5.9.3",
+    "yaml": "2.8.3"
   },
   "dependencies": {
     "@deepseek-ai/dsh-agent": "0.2.0-rc.2",

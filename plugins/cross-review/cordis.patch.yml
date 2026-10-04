@@ -1,0 +1,6 @@
+# Standalone Host patch. Do not combine with the package aggregate patch:
+# both insert the same stable cross-review entry.
+# Configure an absolute private root and explicit reviewers in a user overlay.
+- insert:
+    - id: cross-review
+      name: dsh-codeasier/plugins/cross-review

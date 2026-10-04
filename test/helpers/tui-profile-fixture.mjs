@@ -59,7 +59,7 @@ export async function apply(ctx, config) {
     ready = true;
     const loader = ctx.get('loader', false);
     const configuredEntries = [...loader.entries()].filter(entry => entry.options.name.includes('dsh-codeasier')).map(entry => ({ id: entry.options.id, name: entry.options.name, state: entry.fiber?.state ?? null, uid: entry.fiber?.uid ?? null }));
-    const adapterEntry = [...loader.entries()].find(entry => entry.options.name === 'dsh-codeasier/tui' || entry.options.name.endsWith('/dist/tui.js'));
+    const adapterEntry = [...loader.entries()].find(entry => ['dsh-codeasier/tui', 'dsh-codeasier/plugins/cross-review/tui'].includes(entry.options.name) || entry.options.name.endsWith('/dist/tui.js'));
     const commandPresent = !!ctx.commands.find(owner, 'review');
     void witness({ stage: 'admission-readiness', commandPresent, adapterDiagnostic, configuredEntries, adapterFiberState: adapterEntry?.fiber?.state ?? null, descriptor: ctx.tuiPluginHost.hostDescriptor() });
     assert.ok(adapterDiagnostic, 'The adapter must publish its own activation diagnostic');

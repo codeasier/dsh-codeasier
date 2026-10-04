@@ -10,7 +10,7 @@ import { LlmAdapter, ToolCallId, createUserMessage, type GenerateOptions, type S
 import { SessionId } from '@deepseek-ai/dsh-session';
 import Storage from '@deepseek-ai/dsh-storage';
 import Commands, { CommandId } from '@deepseek-ai/dsh-commands';
-import * as Host from '../src/host.js';
+import * as Host from '../src/plugins/cross-review/index.js';
 import Approval from '@deepseek-ai/dsh-user-approval';
 import type { PostToolDecision } from '@deepseek-ai/dsh-tools';
 import SubagentRuntime from '@deepseek-ai/dsh-subagent';

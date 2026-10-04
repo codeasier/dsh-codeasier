@@ -159,7 +159,7 @@ test(requireCommand
     '- id: subagent\n  config: { maxDepth: 2, maxActiveSubagents: 8 }',
     '- id: agent-default-model\n  config: { provider: fixture-only, model: fixture-parent }',
     `- id: dsh-tui\n  inject: [workspaceRegistry, agents, tuiWorkspaces, tuiScenes, tuiDialogs, tuiStatus, tuiShortcuts, tuiRenderers, tuiThemes, crossReviewFixture]\n  config: ${JSON.stringify({ provider: 'fixture-only', model: 'fixture-parent', cwd: repo, fullscreen: true, activity: false, lang: 'en', whale: false, terminalImages: false })}`,
-    '- insert:\n    - id: cross-review-optional-tui\n      name: dsh-codeasier/tui\n      inject: [crossReview, tuiPluginHost, tuiScenes, tuiStatus, crossReviewFixture]',
+    '- insert:\n    - id: cross-review-optional-tui\n      name: dsh-codeasier/plugins/cross-review/tui\n      inject: [crossReview, tuiPluginHost, tuiScenes, tuiStatus, crossReviewFixture]',
   ].join('\n') + '\n';
   await writeFile(join(profileDir, 'cordis.patch.yml'), overlay);
   const dump = await execute(process.execPath, [cli, '--profile', profile, '--dump-config'], { cwd: repo, env, timeout: 20_000, maxBuffer: 4 * 1024 * 1024 });

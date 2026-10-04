@@ -2,6 +2,15 @@
 
 ## Project goal
 
+Maintain an extensible DSH-native plugin collection in one package. `cross-review` is the first implemented plugin; future features and instruction assets migrate independently.
+
+- Native feature code belongs in `src/plugins/<id>/`; resources, repository-only descriptors and independent patches belong in `plugins/<id>/`.
+- Compose plugins with flat native Loader entries, not a custom runtime registry or a model-generated orchestration engine. New optional features start disabled; scaffolds must remain explicitly unimplemented.
+- Preserve legacy root/TUI/protocol aliases and the original aggregate `cross-review` id/name. Never mount aliases or overlapping insert patches together. Keep persisted state/schema unchanged for layout-only moves.
+- Skill-only assets are not backend implementations and do not install themselves. Repository `plugin.json` metadata is distinct from native `dsh.bundle.patch` and optional TUI `dsh-plugin.json` admission.
+- Run `plugins:check` and collection regression tests when adding plugins. See `docs/plugin-development.md` for migration and attribution rules.
+- Keep reader-facing English and `zh-CN` documentation in sync, including both `docs/README` indexes. Run `test:docs`; this offline link/example regression supplements, but does not replace, a factual docs-governance audit. Do not restructure or rename externally referenced documentation paths without confirmation.
+
 Implement complete DSH-native cross-review orchestration with an optional dsh-TUI adapter. The repository now contains an unreleased Host implementation, an optional TUI adapter, and offline contract/regression checks. The current delivery scope is capabilities supported by npm-latest DSH: native review/report/control tools with honest optional-TUI degradation. Verify `test:dsh-profile` before claiming that scope; the broader mediated-command `test:tui-profile` gate remains separate. No active-profile installation or release support is implied.
 
 Do not reduce the first deliverable to a Skill-only prototype. Implementation may proceed in modules, but acceptance covers the complete backend, recovery/audit contracts, and TUI consumption.

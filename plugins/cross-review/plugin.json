@@ -1,0 +1,15 @@
+{
+  "schemaVersion": 1,
+  "id": "cross-review",
+  "kind": "native",
+  "status": "implemented",
+  "description": "Independent native reviewers, evidence-bound execution, verified findings and durable recovery.",
+  "entry": "dsh-codeasier/plugins/cross-review",
+  "legacyEntries": ["dsh-codeasier"],
+  "defaultEnabled": true,
+  "patch": "plugins/cross-review/cordis.patch.yml",
+  "tui": {
+    "entry": "dsh-codeasier/plugins/cross-review/tui",
+    "patch": "plugins/cross-review/tui.patch.yml"
+  }
+}

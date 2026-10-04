@@ -1,8 +1,10 @@
 # Unresolved native TUI Component admission
 
+[English](tui-admission-gap.md) | [简体中文](tui-admission-gap.zh-CN.md) | [Documentation index](README.md)
+
 ## Scope
 
-Verified against Node 22.22.3, public DSH 0.2.0-rc.2, Cordis 4.0.4, Cordis Loader 1.0.5 and dsh-TUI 0.12.0. This is a limitation of the inspected installed composition, not a claim about future versions or unpublished integrations. Issue #1's full mediated TUI acceptance remains unmet. This optional limitation is not a blocker for the user's narrowed delivery scope: support the capabilities available on current npm-latest DSH through native review/report/control tools and explicit TUI degradation.
+Verified against Node 22.22.3, public DSH 0.2.0-rc.2, Cordis 4.0.4, Cordis Loader 1.0.5 and dsh-TUI 0.12.0. This is a limitation of the inspected installed composition, not a claim about future versions or unpublished integrations. Issue #1's full mediated TUI acceptance remains unmet. This optional limitation is not a blocker for the user's narrowed delivery scope: support the capabilities available on the pinned DSH version selected from npm `latest` for the original delivery, through native review/report/control tools and explicit TUI degradation. Moving registry tags are not a compatibility guarantee.
 
 ## Actual profile evidence
 

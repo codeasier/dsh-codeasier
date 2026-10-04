@@ -19,6 +19,7 @@ One npm package, independent native plugin entries and declarative Cordis compos
 | [spec-run](plugins/spec-run/README.md) | `plugins/spec-run/SKILL.md` | Instruction-only: one approved spec package, dependency order and verified task/checklist progress; no auto-install |
 | [issue-review](plugins/issue-review/README.md) | `plugins/issue-review/SKILL.md` | Skill-only evidence review and explicitly confirmed GitHub comment; no code edits |
 | [issue-submit](plugins/issue-submit/README.md) | `plugins/issue-submit/SKILL.md` | Skill-only template discovery, required fields, complete preview and confirmed GitHub submission |
+| [issue-resolve](plugins/issue-resolve/README.md) | `plugins/issue-resolve/SKILL.md` | Skill-only: one issue, verified worktree, user-state preservation and focused/full check evidence; no enforced FS boundary or installation |
 
 ```text
 src/plugins/<id>/          # feature-owned Host/service; optional tui.ts

@@ -13,6 +13,7 @@
 | 规范交接与确认后接续 | [handoff](../plugins/handoff/README.md) | [handoff](../plugins/handoff/README.zh-CN.md) |
 | 不实现代码的三文件规格包 | [spec-write](../plugins/spec-write/README.md) | [spec-write](../plugins/spec-write/README.zh-CN.md) |
 | 工作流 Skill 演练证据与限制 | [Verification](workflow-skills-verification.md) | [演练验证](workflow-skills-verification.zh-CN.md) |
+| spec-run 已批准三文件包与验证后进度 | [Skill guide](../plugins/spec-run/README.md) | [Skill 指南](../plugins/spec-run/README.zh-CN.md) |
 | 插件集合架构与兼容策略 | [Architecture](architecture.md) | [架构说明](architecture.zh-CN.md) |
 | 新增插件、Skill 资源与 OpenCode 迁移 | [Development and migration](plugin-development.md) | [开发与迁移](plugin-development.zh-CN.md) |
 | 公开契约、验收与安全边界 | [Contracts](contracts.md) | [契约与验收](contracts.zh-CN.md) |

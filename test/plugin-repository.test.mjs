@@ -33,6 +33,8 @@ test('collection descriptors and native patch identities are canonical; default 
   assert.ok(crossReview, 'The legacy cross-review identity must remain in the collection');
   assert.equal(crossReview.kind, 'native'); assert.equal(crossReview.status, 'implemented');
   assert.equal(crossReview.entry, 'dsh-codeasier/plugins/cross-review');
+  assert.equal(crossReview.defaultEnabled, true);
+  assert.deepEqual(crossReview.legacyEntries, ['dsh-codeasier']);
   const source = await readFile(new URL('../cordis.patch.yml', import.meta.url), 'utf8');
   assert.match(source, /id: cross-review\s+name: dsh-codeasier(?:\s|$)/);
   assert.doesNotMatch(source, /optional-tui/);

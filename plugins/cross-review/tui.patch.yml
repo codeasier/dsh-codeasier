@@ -1,0 +1,7 @@
+# Optional adapter, never enabled by the package's Host-only default bundle.
+# Requires the cross-review Host and public optional TUI capabilities.
+# This patch does not supply manifested Component admission.
+- insert:
+    - id: cross-review-optional-tui
+      name: dsh-codeasier/plugins/cross-review/tui
+      inject: [crossReview, tuiPluginHost, tuiScenes, tuiStatus]

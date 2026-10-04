@@ -1,10 +1,12 @@
 # Public contracts and acceptance
 
+[English](contracts.md) | [简体中文](contracts.zh-CN.md) | [Documentation index](README.md)
+
 This is an unreleased development package for issue #1. A green unit test is not a claim that an entire default profile, every model backend, or a published installation is supported.
 
 ## Verified contract target
 
-Native packages are pinned to **DSH 0.2.0-rc.2**, confirmed as npm `latest`, and Cordis 4.0.4. The user's current delivery scope is the capabilities supported by that latest release, not future manifested-command admission. Tests mount the published native AgentLoop, tool registry, fresh spawn backend, approval service and typed JSON domain storage. The only LLM adapter is a scripted local fixture: no provider credentials or paid reviews participate.
+Native packages are pinned to **DSH 0.2.0-rc.2** and Cordis 4.0.4. DSH was selected from npm `latest` for the original delivery; moving tags are not a compatibility guarantee. The delivery scope is the capabilities of that pinned release, not future manifested-command admission. Tests mount the published native AgentLoop, tool registry, fresh spawn backend, approval service and typed JSON domain storage. The only LLM adapter is a scripted local fixture: no provider credentials or paid reviews participate.
 
 The optional adapter targets the **published dsh-TUI 0.12.0 public subpaths**. Actual status/scene mounting and command refusal are separate from successful ecosystem admission. The disposable profile explicitly includes `@deepseek-ai/dsh-agent-loop@0.2.0-rc.2` to align the loop/tool runtime cohort; its scripted native reviewers complete and progress renders. The adapter's own active fiber diagnostic now confirms command registration is refused because the calling activation has no verified `dsh-plugin.json` Component identity; mere Cordis Loader activation is not sufficient. The installed public composition has no supported Component admission bridge. Current-version acceptance uses `test:dsh-profile` to exercise genuine owning-Agent `cross_review_report`/`cross_review_control` calls after approved native reviewers complete, reject stale revisions without mutation, remove the terminal run/snapshot aggregate, and verify graceful Host disposal plus exact-path temporary HOME cleanup. It also verifies honest optional-TUI degradation without command fallback. `test:tui-profile` separately retains the broader full mediated-command/report-scene requirement; native Loader activation alone does not create a verified Component identity.
 
@@ -23,8 +25,9 @@ The optional adapter targets the **published dsh-TUI 0.12.0 public subpaths**. A
 | Native durable results, hash/schema validation and no automatic paid replay | `store.test.ts`, `service.test.ts`, model-judge recovery lifecycle regression |
 | Same-host cross-process ownership; revision-checked controls | native full-lifetime writer lock, independent subprocess lock fixture, stale-control regressions |
 | Host without React/TUI; optional capability refusal and own disposal | actual Host mounting tests and `tui.test.ts` public seam/boundary tests |
-| Current latest DSH review, native report/control tools, stale revision rejection, aggregate cleanup and disposal | `test:dsh-profile` real CLI/profile/PTY gate; unavailable optional command must show native guidance and stay unregistered |
-| Successful ecosystem-admitted TUI command and report-scene consumption | Separate `test:tui-profile` full gate remains unmet on installed latest versions; never replace it with native-tool or negative Loader evidence |
+| Pinned DSH review, native report/control tools, stale revision rejection, aggregate cleanup and disposal | `test:dsh-profile` real CLI/profile/PTY gate; unavailable optional command must show native guidance and stay unregistered |
+| Successful ecosystem-admitted TUI command and report-scene consumption | Separate `test:tui-profile` full gate remains unmet on inspected pinned versions; never replace it with native-tool or negative Loader evidence |
+| Plugin descriptors, independent exports, legacy guarded overlays, disabled imports and safe local scaffolding | `plugin-repository.test.mjs`, `plugin-scaffold-boundaries.test.mjs`, `plugins:check`; repository metadata is not native/TUI admission |
 | Tarball contents and production Host import without TUI/React | Separately enabled `test:package` gate with isolated HOME/store and public registry dependencies; not a release or active-profile installation |
 
 ## Interface provenance
@@ -45,7 +48,7 @@ Public package documentation is distributed with the pinned packages from the [D
 
 ## State and ownership
 
-A run moves from `running` to `awaiting_judge`, `awaiting_timeout`, `completed`, `failed`, `cancelled` or `interrupted`. Parent judging and timeout decisions are durable, not process-local job states. Quorum is `floor(configured reviewers / 2) + 1`, using distinct terminal schema-valid reviewer identities. A completed record must have no pending independently verified finding.
+A run moves from `running` to `awaiting_judge`, `awaiting_timeout`, `completed`, `failed`, `cancelled` or `interrupted`. Parent judging and timeout decisions are durable, not process-local job states. Quorum is `floor(configured reviewers / 2) + 1`, using distinct terminal schema-valid reviewer identities. A completed record must have no candidate finding still awaiting independent judgment.
 
 Every control authenticates the exact live owning Agent and stable session/project/runtime ownership. Mutating controls check the expected revision again inside the serialized durable transition. Cleanup first claims a revision, then removes one aggregate containing the report and snapshot; it never computes a recursive workspace deletion.
 

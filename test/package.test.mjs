@@ -26,7 +26,7 @@ test('packed Host and optional entry import in a production-only project without
   const [packed] = JSON.parse(stdout);
   assert.ok(packed && /^[a-z0-9_.-]+\.tgz$/.test(packed.filename));
   const paths = packed.files.map(file => file.path);
-  for (const required of ['dist/host.js', 'dist/host.d.ts', 'dist/tui.js', 'dist/protocol.js', 'dsh-plugin.json', 'cordis.patch.yml', 'LICENSE', 'README.md', 'docs/contracts.md', 'docs/tui-admission-gap.md']) assert.ok(paths.includes(required), `missing ${required}`);
+  for (const required of ['dist/host.js', 'dist/host.d.ts', 'dist/tui.js', 'dist/protocol.js', 'dist/plugins/cross-review/index.js', 'dist/plugins/cross-review/index.d.ts', 'dist/plugins/cross-review/tui.js', 'dist/plugins/cross-review/protocol.js', 'plugins/cross-review/plugin.json', 'plugins/cross-review/README.md', 'plugins/cross-review/README.zh-CN.md', 'plugins/cross-review/cordis.patch.yml', 'plugins/cross-review/tui.patch.yml', 'dsh-plugin.json', 'cordis.patch.yml', 'LICENSE', 'README.md', 'README.zh-CN.md', 'docs/README.md', 'docs/README.zh-CN.md', 'docs/contracts.md', 'docs/contracts.zh-CN.md', 'docs/tui-admission-gap.md', 'docs/tui-admission-gap.zh-CN.md', 'docs/architecture.md', 'docs/architecture.zh-CN.md', 'docs/plugin-development.md', 'docs/plugin-development.zh-CN.md']) assert.ok(paths.includes(required), `missing ${required}`);
   for (const path of paths) assert.equal(/(^|\/)(?:\.git|\.worktrees|\.dsh-codeasier|node_modules|test|src|\.env(?:\..*)?)(?:\/|$)/.test(path), false, `private/development artifact packaged: ${path}`);
   const { packageManager } = JSON.parse(await readFile(join(repository, 'package.json'), 'utf8'));
   assert.equal(packageManager, 'pnpm@11.21.0');
@@ -50,7 +50,18 @@ test('packed Host and optional entry import in a production-only project without
     const host = await import('dsh-codeasier');
     assert.equal(typeof host.apply, 'function');
     assert.equal(typeof host.CrossReviewService, 'function');
-    const optional = await import('dsh-codeasier/tui');
+    const canonical = await import('dsh-codeasier/plugins/cross-review');
+    assert.deepEqual(Object.keys(canonical), Object.keys(host));
+    for (const key of Object.keys(host)) assert.equal(canonical[key], host[key]);
+    const protocol = await import('dsh-codeasier/plugins/cross-review/protocol');
+    const legacyProtocol = await import('dsh-codeasier/protocol');
+    assert.equal(protocol.parseConfig, legacyProtocol.parseConfig);
+    assert.ok(require.resolve('dsh-codeasier/plugins/cross-review/plugin.json'));
+    assert.ok(require.resolve('dsh-codeasier/plugins/cross-review/cordis.patch.yml'));
+    assert.ok(require.resolve('dsh-codeasier/plugins/cross-review/tui.patch.yml'));
+    const optional = await import('dsh-codeasier/plugins/cross-review/tui');
+    const legacyTui = await import('dsh-codeasier/tui');
+    assert.equal(optional.apply, legacyTui.apply);
     const handle = optional.mountTuiAdapter({ get() { return undefined; } });
     assert.equal(handle.capabilities.command, false);
     handle.dispose();

@@ -154,7 +154,7 @@ test('unit boundary: command-only host requires no rendering subscription and su
 });
 
 test('adapter source has no runtime React or public TUI imports', async () => {
-  const source = await readFile(new URL('../src/tui.ts', import.meta.url), 'utf8');
+  const source = await readFile(new URL('../src/plugins/cross-review/tui.ts', import.meta.url), 'utf8');
   assert.equal(/from ['"]react(?:\/[^'"]*)?['"]/.test(source), false);
   for (const statement of source.matchAll(/import\s+[^;]+;/g)) {
     if (statement[0].includes('@deepseek-harness-tui/dsh-tui')) assert.ok(statement[0].startsWith('import type '));

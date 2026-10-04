@@ -1,10 +1,42 @@
 # dsh-codeasier
 
-DSH-native independent code review, with one Host backend and an optional dsh-TUI adapter.
+[English](README.md) | [简体中文](README.zh-CN.md) | [Documentation index](docs/README.md)
+
+An extensible **DSH-native plugin collection**. `cross-review` is the first implemented plugin, with a complete Host backend and an optional dsh-TUI adapter. Future Skills and OpenCode features can migrate independently; this is not an OpenCode compatibility layer.
+
+## Plugin repository
+
+One npm package, independent native plugin entries and declarative Cordis composition—no new runtime loader or agent engine.
+
+| Plugin | Canonical entry | Scope |
+|---|---|---|
+| [cross-review](plugins/cross-review/README.md) | `dsh-codeasier/plugins/cross-review` | Native review/report/control, evidence and durable recovery |
+| cross-review optional TUI | `dsh-codeasier/plugins/cross-review/tui` | Optional public UI capabilities; mediated command admission remains limited |
+
+```text
+src/plugins/<id>/          # feature-owned Host/service; optional tui.ts
+plugins/<id>/              # descriptor, README, native patches or Skill assets
+scripts/                   # local catalog validation and scaffolding
+src/host.ts, tui.ts, ...    # legacy compatibility forwarders
+cordis.patch.yml           # flat Host-only aggregate bundle
+```
+
+```sh
+pnpm plugins:list
+pnpm plugins:check
+pnpm plugin:new session-review
+pnpm plugin:new handoff-notes --kind skill
+```
+
+Run these after the explicit dependency installation below. Scaffolds are marked unimplemented; new native patches are disabled and not automatically added to the aggregate. Skill-only assets do not register a backend or install themselves. These commands only create/check repository files—no active-profile installation or model calls.
+
+The existing `dsh-codeasier`, `/tui` and `/protocol` exports remain compatibility aliases. The default bundle still contains only cross-review and keeps its original Loader id/name, tool IDs and state format. **Choose one alias/patch per plugin; do not mount old and new entries together.** `plugins/<id>/plugin.json` is local repository metadata, not DSH's native bundle manifest or the optional TUI Component manifest.
+
+Start with [plugin development and migration](docs/plugin-development.md), [architecture](docs/architecture.md), and [cross-review configuration](plugins/cross-review/README.md).
 
 ## Status
 
-**Unreleased development implementation.** The backend, evidence gate, judging, durable recovery and optional adapter live in this repository; this is not a Skill-only prototype. Installation into an active profile and releases are intentionally not advertised. The current delivery targets the capabilities supported by npm-latest DSH `0.2.0-rc.2`, as requested; [Issue #1](https://github.com/codeasier/dsh-codeasier/issues/1) remains the broader roadmap. See the [contract and acceptance matrix](docs/contracts.md) for verification boundaries. The installed native TUI composition currently lacks the public manifested-Component admission step needed for `/review`; the [verified integration gap](docs/tui-admission-gap.md) records the own-activation refusal and public API boundary. Full TUI acceptance is not passing.
+**Unreleased development implementation.** The backend, evidence gate, judging, durable recovery and optional adapter live in this repository; this is not a Skill-only prototype. Installation into an active profile and releases are intentionally not advertised. The original delivery selected DSH `0.2.0-rc.2` from npm `latest`; its pinned capabilities define this scope, not today's moving registry tag. [Issue #1](https://github.com/codeasier/dsh-codeasier/issues/1) remains the broader roadmap. See the [contract and acceptance matrix](docs/contracts.md) for verification boundaries. The installed native TUI composition currently lacks the public manifested-Component admission step needed for `/review`; the [verified integration gap](docs/tui-admission-gap.md) records the own-activation refusal and public API boundary. Full TUI acceptance is not passing.
 
 ## Architecture
 
@@ -18,7 +50,7 @@ Native tools / human commands        Optional TUI adapter
              Native DSH spawn and typed domain storage
 ```
 
-- `dsh-codeasier` exports the Host entry and typed service; `dsh-codeasier/tui` is optional. The Host does not import React or TUI at runtime.
+- `dsh-codeasier/plugins/cross-review` exports the Host entry and typed service; its `/tui` entry is optional. The legacy root exports forward to the same implementation. The Host does not import React or TUI at runtime.
 - Reviewer execution uses native fresh, one-shot subagents. A separate **undriven** administrative Agent supplies an unambiguous parent identity for each attempt; it never calls a model. The awaited child-creation hook durably binds the real child ID to immutable evidence before execution.
 - Native tool restrictions plus a monotonic execution guard admit only snapshot reads and native `structured_output`. Generic filesystem, shell, network, MCP, delegation, session queries, scoped bypasses and `run_code` cannot execute. Reviewers never receive another reviewer's output.
 - Native terminal results and backend timers advance bounded work. Status reads never schedule it. Only terminal, schema-valid results count toward majority quorum; valid empty findings count, partial output does not.
@@ -68,13 +100,14 @@ Preparation rejects rather than truncates unsupported evidence: binary/non-UTF-8
 
 ## Development
 
-The public native API contract target is DSH `0.2.0-rc.2`, verified as npm `latest` in this session; the optional adapter target is dsh-TUI `0.12.0`, also npm `latest`. The distinct DSH `alpha` tag (`0.2.1-alpha.1`) is not the default support target. Locked dependencies and actual contract tests—not the version numbers alone—define what has been verified. Development checks use Node `22.22.3` and pnpm `11.21.0`. Use pnpm: clean npm installation can reject the TUI package's bundled `workspace:*` dependencies. The workspace disables dependency build scripts and implicit installs during `pnpm run`; installation is a separate explicit step. The bundled TUI working-activity dependency declares older DSH/React peers; tests do not disguise those warnings as full-profile compatibility.
+The pinned public native API contract target is DSH `0.2.0-rc.2`; the optional adapter target is dsh-TUI `0.12.0`. These were selected from npm `latest` for the original delivery; moving registry tags are not a compatibility guarantee. The separate DSH `alpha` line is not the default support target. Locked dependencies and actual contract tests—not the version numbers alone—define what has been verified. Development checks use Node `22.22.3` and pnpm `11.21.0`. Use pnpm: clean npm installation can reject the TUI package's bundled `workspace:*` dependencies. The workspace disables dependency build scripts and implicit installs during `pnpm run`; installation is a separate explicit step. The bundled TUI working-activity dependency declares older DSH/React peers; tests do not disguise those warnings as full-profile compatibility.
 
 ```sh
 pnpm install --frozen-lockfile --ignore-scripts
 pnpm run build
 pnpm run test:contracts
 pnpm run test:types
+pnpm run test:docs
 pnpm test
 pnpm run check
 ```

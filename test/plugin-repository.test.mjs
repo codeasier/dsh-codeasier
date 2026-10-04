@@ -29,9 +29,13 @@ async function scratch(t) {
 
 test('collection descriptors and native patch identities are canonical; default remains legacy-compatible Host-only', async () => {
   const plugins = await inspectPlugins(repository);
-  assert.deepEqual(plugins.map(plugin => plugin.id), ['cross-review']);
-  assert.equal(plugins[0].kind, 'native'); assert.equal(plugins[0].status, 'implemented');
-  assert.equal(plugins[0].entry, 'dsh-codeasier/plugins/cross-review');
+  const crossReview = plugins.find(plugin => plugin.id === 'cross-review');
+  assert.ok(crossReview, 'The legacy cross-review identity must remain in the collection');
+  assert.equal(crossReview.kind, 'native'); assert.equal(crossReview.status, 'implemented');
+  assert.equal(crossReview.entry, 'dsh-codeasier/plugins/cross-review');
+  assert.deepEqual(crossReview.legacyEntries, ['dsh-codeasier']);
+  assert.equal(crossReview.defaultEnabled, true);
+  assert.equal(crossReview.patch, 'plugins/cross-review/cordis.patch.yml');
   const source = await readFile(new URL('../cordis.patch.yml', import.meta.url), 'utf8');
   assert.match(source, /id: cross-review\s+name: dsh-codeasier(?:\s|$)/);
   assert.doesNotMatch(source, /optional-tui/);

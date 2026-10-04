@@ -1,0 +1,8 @@
+{
+  "schemaVersion": 1,
+  "id": "spec-run",
+  "kind": "skill",
+  "status": "implemented",
+  "description": "Execute one approved three-file spec package with dependency-ordered work and evidence-backed progress.",
+  "skill": "plugins/spec-run/SKILL.md"
+}

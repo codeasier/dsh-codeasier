@@ -1,0 +1,8 @@
+{
+  "schemaVersion": 1,
+  "id": "issue-resolve",
+  "kind": "skill",
+  "status": "implemented",
+  "description": "DSH instructions for one issue: verified worktree ownership, minimal changes and honest focused/full checks; no enforced filesystem boundary or installation.",
+  "skill": "plugins/issue-resolve/SKILL.md"
+}

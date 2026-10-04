@@ -1,0 +1,8 @@
+{
+  "schemaVersion": 1,
+  "id": "docs-governance",
+  "kind": "skill",
+  "status": "implemented",
+  "description": "Read-only documentation audit or explicitly authorized scoped fixes.",
+  "skill": "plugins/docs-governance/SKILL.md"
+}

@@ -57,6 +57,8 @@ A user overlay can override `session-review` with `disabled: false` and a comple
 
 Rewrite portable task instructions, resource references and DSH tool/config names; validate the frontmatter and prerequisites. Do not leave `opencode models`, `.opencode/...`, OpenCode SDK calls or a nonexistent DSH tool in supposedly DSH-ready instructions. Preserve attribution. Set `status: implemented` only after manual behavioral verification. If the Skill needs enforceable side effects, model orchestration, recovery or bounded execution, create a native scaffold instead (or under a distinct ID) and port that behavior; instructions alone cannot implement those guarantees. Related instruction assets can live alongside native plugin resources, but must not weaken native authorization.
 
+The migrated [issue-review](../plugins/issue-review/README.md) and [issue-submit](../plugins/issue-submit/README.md) assets demonstrate evidence-only analysis and confirmed remote submission. Their task-specific resources only prepare data, never execute a forge write. DSH human questions belong to the exact live runtime root; children hand unresolved questions/drafts back to the parent. Each asset records an applicable public-testkit scripted rehearsal separately from frontmatter/collection checks. Neither that rehearsal nor repository metadata proves installation/profile support or enforceable authorization/recovery.
+
 ## OpenCode -> DSH migration checklist
 
 | Source concern | DSH-native destination |

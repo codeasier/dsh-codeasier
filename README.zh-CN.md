@@ -12,6 +12,16 @@
 |---|---|---|
 | [cross-review](plugins/cross-review/README.zh-CN.md) | `dsh-codeasier/plugins/cross-review` | 原生评审、报告、控制、证据绑定与持久化恢复 |
 | cross-review 可选 TUI | `dsh-codeasier/plugins/cross-review/tui` | 可选的公开 UI 能力；受宿主中介管理的命令准入仍有限制 |
+| [understand-me](plugins/understand-me/README.zh-CN.md) | `plugins/understand-me/SKILL.md` | 纯 Skill：逐项决策问答与显式共识确认 |
+| [docs-governance](plugins/docs-governance/README.zh-CN.md) | `plugins/docs-governance/SKILL.md` | 纯 Skill：零写入 audit 或已授权范围内 fix |
+| [handoff](plugins/handoff/README.zh-CN.md) | `plugins/handoff/SKILL.md` | 纯 Skill：规范交接与确认后接续 |
+| [spec-write](plugins/spec-write/README.zh-CN.md) | `plugins/spec-write/SKILL.md` | 纯 Skill：spec/tasks/checklist 包，不实现产品代码 |
+| [spec-run](plugins/spec-run/README.zh-CN.md) | `plugins/spec-run/SKILL.md` | 纯指令：执行唯一批准的 spec 包，按依赖顺序、实际验证后更新任务/清单；不自动安装 |
+| [issue-review](plugins/issue-review/README.zh-CN.md) | `plugins/issue-review/SKILL.md` | 纯 Skill 证据评审与明确确认后的 GitHub 评论；不改代码 |
+| [issue-submit](plugins/issue-submit/README.zh-CN.md) | `plugins/issue-submit/SKILL.md` | 纯 Skill 模板发现、必填字段、完整预览与确认后的 GitHub 投稿 |
+| [issue-resolve](plugins/issue-resolve/README.zh-CN.md) | `plugins/issue-resolve/SKILL.md` | 纯 Skill：单 issue、核实 worktree、保护用户工作与 focused/full 检查证据；不提供强制 FS 边界或安装 |
+| [pr-followup](plugins/pr-followup/README.zh-CN.md) | `plugins/pr-followup/SKILL.md` | 独立指令资源：完整反馈分类、最小修复与远端操作逐项确认；无后端、不自动安装 |
+| [cross-review-audit](plugins/cross-review-audit/README.zh-CN.md) | `dsh-codeasier/plugins/cross-review-audit` | 显式启用、仅所有者可用的运行/证据/报告契约只读审计，不调用模型 |
 
 ```text
 src/plugins/<id>/          # 插件自己的 Host/服务；可选 tui.ts
@@ -30,9 +40,11 @@ pnpm plugin:new handoff-notes --kind skill
 
 先按下文明确安装开发依赖，再运行这些命令。脚手架明确标记为尚未实现；新的原生 patch 默认禁用，不会自动加入聚合 bundle。纯 Skill 资源不注册后端，也不会自行安装。这些命令只创建或检查仓库文件，不安装到活动 profile，也不调用模型。
 
-现有 `dsh-codeasier`、`/tui` 和 `/protocol` 导出继续作为兼容别名。默认 bundle 仍然只包含 cross-review，保留原来的 Loader id/name、工具 ID 和持久化状态格式。**每个插件只能选择一套入口别名和 patch，不能同时挂载旧入口与新入口。** `plugins/<id>/plugin.json` 是仓库自有元数据，不是 DSH 原生 bundle 清单，也不是可选 TUI 的 Component 清单。
+现有 `dsh-codeasier`、`/tui` 和 `/protocol` 导出继续作为兼容别名。默认 bundle 保留 cross-review 原来的 Loader id/name、工具 ID 和持久化状态格式；新增的 cross-review-audit 默认禁用。**每个插件只能选择一套入口别名和 patch，不能同时挂载旧入口与新入口。** `plugins/<id>/plugin.json` 是仓库自有元数据，不是 DSH 原生 bundle 清单，也不是可选 TUI 的 Component 清单。
 
 从[插件开发与迁移指南](docs/plugin-development.zh-CN.md)、[架构说明](docs/architecture.zh-CN.md)和 [cross-review 配置](plugins/cross-review/README.zh-CN.md)开始。
+
+Issue Skill 使用 live root DSH 问答和已检查的 github.com/gh `2.89.0` 契约。子代理交回待确认问题，没有明确确认就不写 issue/评论。纯数据资源和离线脚本化演练不等于原生授权/恢复强制执行、已安装 Skill 发现或已验证包/profile 支持。前置条件和限制见各插件指南。
 
 ## 当前状态
 
@@ -118,7 +130,9 @@ pnpm run check
 
 `pnpm run check` 默认跳过需要单独开启的打包和真实 TUI profile gate。构建后运行 `pnpm run test:package` 会本地打包，并在新的临时 HOME/store 中安装生产依赖，禁用依赖脚本；它需要 registry 访问，不依赖无关的开发者 npm 缓存。`pnpm run test:dsh-profile` 在真实、一次性的 DSH+TUI profile 中验证当前支持的原生评审、报告、修订控制和清理；只有明确的 fail-closed 诊断和原生工具提示同时出现，才接受可选命令被拒绝。`pnpm run test:tui-profile` 保留更严格、当前尚未满足的完整中介命令与报告场景验收。两个 profile gate 都要求 Node 22、Python 3、公开 DSH `0.2.0-rc.2` CLI 和本地构建的 tarball。临时 profile 会先固定并验证 pnpm `11.21.0`，不解析移动的 Corepack 默认版本。默认产物为 `.dsh-codeasier/package-acceptance/dsh-codeasier-0.0.0.tgz`（先构建、创建目录，再运行 `npm pack --ignore-scripts --pack-destination .dsh-codeasier/package-acceptance`）。`DSH_CODEASIER_TEST_CLI` 和 `DSH_CODEASIER_TEST_ARTIFACT` 可设为绝对路径以覆盖默认值。Gate 只安装到新建临时 HOME，显式对齐原生 AgentLoop 依赖组，禁用真实 provider 和无关 profile 功能，并在 PTY 中运行实际 TUI。只有证明受中介管理的 `/review` 注册、报告渲染、过期修订拒绝、清理和释放都成功，才能宣称完整 TUI 验收通过。
 
-本实现为原创。没有从 [open-codeasier](https://github.com/codeasier/open-codeasier) 复制 OpenCode 执行、轮询或权限兼容层。
+cross-review 实现为原创。迁移的指令资产改编自 MIT 许可的 [open-codeasier](https://github.com/codeasier/open-codeasier) 文本，固定修订为 `20194ff7a7b26fd51965e50bdb5091cb37a4c0f5`；各指南保留来源与许可证署名。没有复制 OpenCode 执行、轮询或权限兼容层。首批工作流的[离线演练边界](docs/workflow-skills-verification.zh-CN.md)不代表自动安装、强制安全或后台安全保证。
+
+独立的 [cross-review-audit 指南](plugins/cross-review-audit/README.zh-CN.md#来源署名与迁移)记录其语义/指令改编及保留的 MIT 声明；没有复制 OpenCode run-store。
 
 ## 许可证
 

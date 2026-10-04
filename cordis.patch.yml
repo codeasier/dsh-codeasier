@@ -3,3 +3,7 @@
 - insert:
     - id: cross-review
       name: dsh-codeasier
+    - id: cross-review-audit
+      name: dsh-codeasier/plugins/cross-review-audit
+      disabled: true
+      config: {}

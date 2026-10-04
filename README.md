@@ -12,6 +12,16 @@ One npm package, independent native plugin entries and declarative Cordis compos
 |---|---|---|
 | [cross-review](plugins/cross-review/README.md) | `dsh-codeasier/plugins/cross-review` | Native review/report/control, evidence and durable recovery |
 | cross-review optional TUI | `dsh-codeasier/plugins/cross-review/tui` | Optional public UI capabilities; mediated command admission remains limited |
+| [understand-me](plugins/understand-me/README.md) | `plugins/understand-me/SKILL.md` | Skill-only: one-question decisions and confirmed consensus |
+| [docs-governance](plugins/docs-governance/README.md) | `plugins/docs-governance/SKILL.md` | Skill-only: zero-write audit or authorized scoped fixes |
+| [handoff](plugins/handoff/README.md) | `plugins/handoff/SKILL.md` | Skill-only: canonical handoffs and confirmed intake |
+| [spec-write](plugins/spec-write/README.md) | `plugins/spec-write/SKILL.md` | Skill-only: spec/tasks/checklist package, no product implementation |
+| [spec-run](plugins/spec-run/README.md) | `plugins/spec-run/SKILL.md` | Instruction-only: one approved spec package, dependency order and verified task/checklist progress; no auto-install |
+| [issue-review](plugins/issue-review/README.md) | `plugins/issue-review/SKILL.md` | Skill-only evidence review and explicitly confirmed GitHub comment; no code edits |
+| [issue-submit](plugins/issue-submit/README.md) | `plugins/issue-submit/SKILL.md` | Skill-only template discovery, required fields, complete preview and confirmed GitHub submission |
+| [issue-resolve](plugins/issue-resolve/README.md) | `plugins/issue-resolve/SKILL.md` | Skill-only: one issue, verified worktree, user-state preservation and focused/full check evidence; no enforced FS boundary or installation |
+| [pr-followup](plugins/pr-followup/README.md) | `plugins/pr-followup/SKILL.md` | Independent instruction asset: complete feedback triage, minimal fixes and separately confirmed remote actions; no backend or auto-install |
+| [cross-review-audit](plugins/cross-review-audit/README.md) | `dsh-codeasier/plugins/cross-review-audit` | Opt-in, owner-only read-only run/evidence/report contract audit; no models |
 
 ```text
 src/plugins/<id>/          # feature-owned Host/service; optional tui.ts
@@ -30,9 +40,11 @@ pnpm plugin:new handoff-notes --kind skill
 
 Run these after the explicit dependency installation below. Scaffolds are marked unimplemented; new native patches are disabled and not automatically added to the aggregate. Skill-only assets do not register a backend or install themselves. These commands only create/check repository files—no active-profile installation or model calls.
 
-The existing `dsh-codeasier`, `/tui` and `/protocol` exports remain compatibility aliases. The default bundle still contains only cross-review and keeps its original Loader id/name, tool IDs and state format. **Choose one alias/patch per plugin; do not mount old and new entries together.** `plugins/<id>/plugin.json` is local repository metadata, not DSH's native bundle manifest or the optional TUI Component manifest.
+The existing `dsh-codeasier`, `/tui` and `/protocol` exports remain compatibility aliases. The default bundle keeps cross-review's original Loader id/name, tool IDs and state format; cross-review-audit is present but disabled by default. **Choose one alias/patch per plugin; do not mount old and new entries together.** `plugins/<id>/plugin.json` is local repository metadata, not DSH's native bundle manifest or the optional TUI Component manifest.
 
 Start with [plugin development and migration](docs/plugin-development.md), [architecture](docs/architecture.md), and [cross-review configuration](plugins/cross-review/README.md).
+
+The issue Skills use live-root DSH questions and the inspected github.com/gh `2.89.0` contract. Child Agents return pending questions; no explicit confirmation means no issue/comment write. Their pure data resources and offline scripted rehearsals are not native authorization/recovery enforcement, installed Skill discovery or verified package/profile support. See each guide for prerequisites and limitations.
 
 ## Status
 
@@ -118,7 +130,9 @@ Tests use disposable Git repositories, isolated state/HOME directories, real nat
 
 `pnpm run check` skips the separately opted-in package and real TUI profile gates. After building, `pnpm run test:package` packs locally and installs production dependencies in a new temporary HOME/store with dependency scripts disabled; it needs registry access rather than an unrelated developer npm cache. `pnpm run test:dsh-profile` verifies currently supported native review/report/revision-control/cleanup in a real disposable DSH+TUI profile, accepting a denied optional command only with explicit fail-closed diagnostics and native-tool guidance. `pnpm run test:tui-profile` retains the stricter, currently unmet full mediated-command/report-scene gate. Both require Node 22, Python 3, a public DSH `0.2.0-rc.2` CLI and a locally built tarball. The disposable profile pins and verifies pnpm `11.21.0` before installation, rather than resolving a moving Corepack default. The default artifact is `.dsh-codeasier/package-acceptance/dsh-codeasier-0.0.0.tgz` (build, create that directory and pack locally with `npm pack --ignore-scripts --pack-destination .dsh-codeasier/package-acceptance`). `DSH_CODEASIER_TEST_CLI` and `DSH_CODEASIER_TEST_ARTIFACT` accept absolute overrides. The gate installs only into a new temporary HOME, explicitly aligns the native AgentLoop cohort, disables real providers and unrelated profile features, and exercises the actual TUI in a PTY. It must prove mediated `/review` registration, report rendering, revision rejection, cleanup and disposal before full TUI acceptance can be claimed.
 
-This implementation is original. No OpenCode execution, polling or permission-compatibility layer is copied from [open-codeasier](https://github.com/codeasier/open-codeasier).
+The cross-review implementation is original. Migrated instruction assets adapt MIT-licensed [open-codeasier](https://github.com/codeasier/open-codeasier) prose at revision `20194ff7a7b26fd51965e50bdb5091cb37a4c0f5`; each guide retains source and license attribution. No OpenCode execution, polling or permission-compatibility layer is copied. The first batch's [offline rehearsal boundaries](docs/workflow-skills-verification.md) do not imply automatic installation or enforceable/background safety.
+
+The independent [cross-review-audit guide](plugins/cross-review-audit/README.md#attribution-and-migration) records its semantic/instruction adaptation and retained MIT notice; no OpenCode run-store is copied.
 
 ## License
 

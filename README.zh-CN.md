@@ -20,6 +20,7 @@
 | [issue-review](plugins/issue-review/README.zh-CN.md) | `plugins/issue-review/SKILL.md` | 纯 Skill 证据评审与明确确认后的 GitHub 评论；不改代码 |
 | [issue-submit](plugins/issue-submit/README.zh-CN.md) | `plugins/issue-submit/SKILL.md` | 纯 Skill 模板发现、必填字段、完整预览与确认后的 GitHub 投稿 |
 | [issue-resolve](plugins/issue-resolve/README.zh-CN.md) | `plugins/issue-resolve/SKILL.md` | 纯 Skill：单 issue、核实 worktree、保护用户工作与 focused/full 检查证据；不提供强制 FS 边界或安装 |
+| [pr-followup](plugins/pr-followup/README.zh-CN.md) | `plugins/pr-followup/SKILL.md` | 独立指令资源：完整反馈分类、最小修复与远端操作逐项确认；无后端、不自动安装 |
 
 ```text
 src/plugins/<id>/          # 插件自己的 Host/服务；可选 tui.ts

@@ -23,6 +23,7 @@
 | 新增插件、Skill 资源与 OpenCode 迁移 | [Development and migration](plugin-development.md) | [开发与迁移](plugin-development.zh-CN.md) |
 | 公开契约、验收与安全边界 | [Contracts](contracts.md) | [契约与验收](contracts.zh-CN.md) |
 | 可选 TUI Component 准入缺口 | [TUI admission gap](tui-admission-gap.md) | [TUI 准入缺口](tui-admission-gap.zh-CN.md) |
+| session-review 公开读取、证据完整性与后续范围（仅调查） | [Investigation](session-review-investigation.md) | [调查报告](session-review-investigation.zh-CN.md) |
 
 ## 阅读与维护边界
 

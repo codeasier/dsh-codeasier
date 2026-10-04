@@ -23,6 +23,7 @@
 | Adding plugins, Skill assets and OpenCode migrations | [Development and migration](plugin-development.md) | [开发与迁移](plugin-development.zh-CN.md) |
 | Public contracts, acceptance and safety boundaries | [Contracts](contracts.md) | [契约与验收](contracts.zh-CN.md) |
 | Unresolved optional TUI Component admission | [TUI admission gap](tui-admission-gap.md) | [TUI 准入缺口](tui-admission-gap.zh-CN.md) |
+| session-review public reads, evidence completeness and follow-up scope (investigation only) | [Investigation](session-review-investigation.md) | [调查报告](session-review-investigation.zh-CN.md) |
 
 ## Reading and maintenance boundaries
 

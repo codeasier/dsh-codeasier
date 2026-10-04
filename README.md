@@ -50,6 +50,8 @@ The issue Skills use live-root DSH questions and the inspected github.com/gh `2.
 
 **Unreleased development implementation.** The backend, evidence gate, judging, durable recovery and optional adapter live in this repository; this is not a Skill-only prototype. Installation into an active profile and releases are intentionally not advertised. The original delivery selected DSH `0.2.0-rc.2` from npm `latest`; its pinned capabilities define this scope, not today's moving registry tag. [Issue #1](https://github.com/codeasier/dsh-codeasier/issues/1) remains the broader roadmap. See the [contract and acceptance matrix](docs/contracts.md) for verification boundaries. The installed native TUI composition currently lacks the public manifested-Component admission step needed for `/review`; the [verified integration gap](docs/tui-admission-gap.md) records the own-activation refusal and public API boundary. Full TUI acceptance is not passing.
 
+[Session-review investigation](docs/session-review-investigation.md) records pinned public live/cold read contracts and authorization limits for issue #11. It delivers a bilingual report and offline tests, not a session-review plugin or exporter.
+
 ## Architecture
 
 ```text

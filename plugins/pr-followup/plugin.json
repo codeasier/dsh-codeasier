@@ -1,0 +1,8 @@
+{
+  "schemaVersion": 1,
+  "id": "pr-followup",
+  "kind": "skill",
+  "status": "implemented",
+  "description": "Evidence-based PR feedback triage, minimal local fixes and separately confirmed remote actions; instruction asset only.",
+  "skill": "plugins/pr-followup/SKILL.md"
+}

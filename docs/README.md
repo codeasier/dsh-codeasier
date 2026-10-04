@@ -8,6 +8,7 @@
 |---|---|---|
 | Repository overview and development checks | [Overview](../README.md) / [Checks](../README.md#development) | [概览](../README.zh-CN.md) / [开发检查](../README.zh-CN.md#开发与验证) |
 | cross-review configuration, tools and lifecycle | [Plugin guide](../plugins/cross-review/README.md) | [插件指南](../plugins/cross-review/README.zh-CN.md) |
+| pr-followup feedback triage, confirmations and offline rehearsal | [Skill guide](../plugins/pr-followup/README.md) | [Skill 指南](../plugins/pr-followup/README.zh-CN.md) |
 | Plugin collection architecture and compatibility | [Architecture](architecture.md) | [架构说明](architecture.zh-CN.md) |
 | Adding plugins, Skill assets and OpenCode migrations | [Development and migration](plugin-development.md) | [开发与迁移](plugin-development.zh-CN.md) |
 | Public contracts, acceptance and safety boundaries | [Contracts](contracts.md) | [契约与验收](contracts.zh-CN.md) |

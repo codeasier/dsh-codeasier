@@ -12,6 +12,10 @@
 |---|---|---|
 | [cross-review](plugins/cross-review/README.zh-CN.md) | `dsh-codeasier/plugins/cross-review` | 原生评审、报告、控制、证据绑定与持久化恢复 |
 | cross-review 可选 TUI | `dsh-codeasier/plugins/cross-review/tui` | 可选的公开 UI 能力；受宿主中介管理的命令准入仍有限制 |
+| [understand-me](plugins/understand-me/README.zh-CN.md) | `plugins/understand-me/SKILL.md` | 纯 Skill：逐项决策问答与显式共识确认 |
+| [docs-governance](plugins/docs-governance/README.zh-CN.md) | `plugins/docs-governance/SKILL.md` | 纯 Skill：零写入 audit 或已授权范围内 fix |
+| [handoff](plugins/handoff/README.zh-CN.md) | `plugins/handoff/SKILL.md` | 纯 Skill：规范交接与确认后接续 |
+| [spec-write](plugins/spec-write/README.zh-CN.md) | `plugins/spec-write/SKILL.md` | 纯 Skill：spec/tasks/checklist 包，不实现产品代码 |
 | [spec-run](plugins/spec-run/README.zh-CN.md) | `plugins/spec-run/SKILL.md` | 纯指令：执行唯一批准的 spec 包，按依赖顺序、实际验证后更新任务/清单；不自动安装 |
 
 ```text
@@ -117,7 +121,7 @@ pnpm run check
 
 `pnpm run check` 默认跳过需要单独开启的打包和真实 TUI profile gate。构建后运行 `pnpm run test:package` 会本地打包，并在新的临时 HOME/store 中安装生产依赖，禁用依赖脚本；它需要 registry 访问，不依赖无关的开发者 npm 缓存。`pnpm run test:dsh-profile` 在真实、一次性的 DSH+TUI profile 中验证当前支持的原生评审、报告、修订控制和清理；只有明确的 fail-closed 诊断和原生工具提示同时出现，才接受可选命令被拒绝。`pnpm run test:tui-profile` 保留更严格、当前尚未满足的完整中介命令与报告场景验收。两个 profile gate 都要求 Node 22、Python 3、公开 DSH `0.2.0-rc.2` CLI 和本地构建的 tarball。临时 profile 会先固定并验证 pnpm `11.21.0`，不解析移动的 Corepack 默认版本。默认产物为 `.dsh-codeasier/package-acceptance/dsh-codeasier-0.0.0.tgz`（先构建、创建目录，再运行 `npm pack --ignore-scripts --pack-destination .dsh-codeasier/package-acceptance`）。`DSH_CODEASIER_TEST_CLI` 和 `DSH_CODEASIER_TEST_ARTIFACT` 可设为绝对路径以覆盖默认值。Gate 只安装到新建临时 HOME，显式对齐原生 AgentLoop 依赖组，禁用真实 provider 和无关 profile 功能，并在 PTY 中运行实际 TUI。只有证明受中介管理的 `/review` 注册、报告渲染、过期修订拒绝、清理和释放都成功，才能宣称完整 TUI 验收通过。
 
-cross-review 实现为原创。可移植 Skill 文本改编自 [open-codeasier](https://github.com/codeasier/open-codeasier)，各资产记录固定来源并保留署名/许可证声明。没有复制 OpenCode 执行、轮询或权限兼容层。
+cross-review 实现为原创。迁移的指令资产改编自 MIT 许可的 [open-codeasier](https://github.com/codeasier/open-codeasier) 文本，固定修订为 `20194ff7a7b26fd51965e50bdb5091cb37a4c0f5`；各指南保留来源与许可证署名。没有复制 OpenCode 执行、轮询或权限兼容层。首批工作流的[离线演练边界](docs/workflow-skills-verification.zh-CN.md)不代表自动安装、强制安全或后台安全保证。
 
 ## 许可证
 

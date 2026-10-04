@@ -1,0 +1,8 @@
+{
+  "schemaVersion": 1,
+  "id": "issue-submit",
+  "kind": "skill",
+  "status": "implemented",
+  "description": "Discover GitHub issue forms and templates, collect fields, preview and explicitly confirm one submission.",
+  "skill": "plugins/issue-submit/SKILL.md"
+}

@@ -57,6 +57,8 @@ test/<id>.test.ts                # 稳定身份检查 + TODO 行为契约
 
 重写可移植的任务指令、资源引用和 DSH 工具/配置名称；校验 frontmatter 和前置条件。不要在声称已适配 DSH 的指令中留下 `opencode models`、`.opencode/...`、OpenCode SDK 调用或不存在的 DSH 工具。保留署名。只有在手动验证行为之后，才能设置 `status: implemented`。如果 Skill 需要可强制执行的副作用、模型编排、恢复或有界执行，请改为创建原生脚手架（或使用不同的 ID），并移植相应行为；仅靠指令无法实现这些保证。相关指令资产可以与原生插件资源并存，但不得削弱原生授权。
 
+已迁移的 [issue-review](../plugins/issue-review/README.zh-CN.md) 与 [issue-submit](../plugins/issue-submit/README.zh-CN.md) 展示纯证据分析和确认后远端投稿。其专用资源只准备数据，不执行 forge 写入。DSH 人机问答只属于精确的 live runtime root；子代理将未解决问题/草稿交回父代理。每项资产分别记录适用的公开 testkit 脚本化演练，不能用 frontmatter/集合检查代替行为验证。演练和仓库元数据均不证明安装/profile 支持或可强制授权/恢复。
+
 ## OpenCode -> DSH 迁移检查清单
 
 | 源端关注点 | DSH 原生对应实现 |

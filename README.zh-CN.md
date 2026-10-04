@@ -17,6 +17,8 @@
 | [handoff](plugins/handoff/README.zh-CN.md) | `plugins/handoff/SKILL.md` | 纯 Skill：规范交接与确认后接续 |
 | [spec-write](plugins/spec-write/README.zh-CN.md) | `plugins/spec-write/SKILL.md` | 纯 Skill：spec/tasks/checklist 包，不实现产品代码 |
 | [spec-run](plugins/spec-run/README.zh-CN.md) | `plugins/spec-run/SKILL.md` | 纯指令：执行唯一批准的 spec 包，按依赖顺序、实际验证后更新任务/清单；不自动安装 |
+| [issue-review](plugins/issue-review/README.zh-CN.md) | `plugins/issue-review/SKILL.md` | 纯 Skill 证据评审与明确确认后的 GitHub 评论；不改代码 |
+| [issue-submit](plugins/issue-submit/README.zh-CN.md) | `plugins/issue-submit/SKILL.md` | 纯 Skill 模板发现、必填字段、完整预览与确认后的 GitHub 投稿 |
 
 ```text
 src/plugins/<id>/          # 插件自己的 Host/服务；可选 tui.ts
@@ -38,6 +40,8 @@ pnpm plugin:new handoff-notes --kind skill
 现有 `dsh-codeasier`、`/tui` 和 `/protocol` 导出继续作为兼容别名。默认 bundle 仍然只包含 cross-review，保留原来的 Loader id/name、工具 ID 和持久化状态格式。**每个插件只能选择一套入口别名和 patch，不能同时挂载旧入口与新入口。** `plugins/<id>/plugin.json` 是仓库自有元数据，不是 DSH 原生 bundle 清单，也不是可选 TUI 的 Component 清单。
 
 从[插件开发与迁移指南](docs/plugin-development.zh-CN.md)、[架构说明](docs/architecture.zh-CN.md)和 [cross-review 配置](plugins/cross-review/README.zh-CN.md)开始。
+
+Issue Skill 使用 live root DSH 问答和已检查的 github.com/gh `2.89.0` 契约。子代理交回待确认问题，没有明确确认就不写 issue/评论。纯数据资源和离线脚本化演练不等于原生授权/恢复强制执行、已安装 Skill 发现或已验证包/profile 支持。前置条件和限制见各插件指南。
 
 ## 当前状态
 

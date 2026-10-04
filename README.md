@@ -17,6 +17,8 @@ One npm package, independent native plugin entries and declarative Cordis compos
 | [handoff](plugins/handoff/README.md) | `plugins/handoff/SKILL.md` | Skill-only: canonical handoffs and confirmed intake |
 | [spec-write](plugins/spec-write/README.md) | `plugins/spec-write/SKILL.md` | Skill-only: spec/tasks/checklist package, no product implementation |
 | [spec-run](plugins/spec-run/README.md) | `plugins/spec-run/SKILL.md` | Instruction-only: one approved spec package, dependency order and verified task/checklist progress; no auto-install |
+| [issue-review](plugins/issue-review/README.md) | `plugins/issue-review/SKILL.md` | Skill-only evidence review and explicitly confirmed GitHub comment; no code edits |
+| [issue-submit](plugins/issue-submit/README.md) | `plugins/issue-submit/SKILL.md` | Skill-only template discovery, required fields, complete preview and confirmed GitHub submission |
 
 ```text
 src/plugins/<id>/          # feature-owned Host/service; optional tui.ts
@@ -38,6 +40,8 @@ Run these after the explicit dependency installation below. Scaffolds are marked
 The existing `dsh-codeasier`, `/tui` and `/protocol` exports remain compatibility aliases. The default bundle still contains only cross-review and keeps its original Loader id/name, tool IDs and state format. **Choose one alias/patch per plugin; do not mount old and new entries together.** `plugins/<id>/plugin.json` is local repository metadata, not DSH's native bundle manifest or the optional TUI Component manifest.
 
 Start with [plugin development and migration](docs/plugin-development.md), [architecture](docs/architecture.md), and [cross-review configuration](plugins/cross-review/README.md).
+
+The issue Skills use live-root DSH questions and the inspected github.com/gh `2.89.0` contract. Child Agents return pending questions; no explicit confirmation means no issue/comment write. Their pure data resources and offline scripted rehearsals are not native authorization/recovery enforcement, installed Skill discovery or verified package/profile support. See each guide for prerequisites and limitations.
 
 ## Status
 

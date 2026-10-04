@@ -136,6 +136,9 @@ test('issue-resolve is a licensed Skill asset, with no native activation or inst
   assert.match(skill, /No push without an explicit user request/);
   assert.match(skill, /PR creation[\s\S]*worktree deletion[\s\S]*separately scoped authorization/);
   assert.match(skill, /not an OS sandbox/); assert.match(skill, /Before an uncertain remote write is retried, read back/);
+  assert.match(skill, /DSH `0\.2\.0-rc\.2`[\s\S]*only to the exact live runtime root/);
+  assert.match(skill, /owned child must return missing choices or confirmations to the main\/root Agent/);
+  assert.match(skill, /not wait for a human reply or treat pending\/unavailable questions as authorization/);
 });
 
 test('actual issue rehearsal preserves dirty source/index, reproduces regression, fixes in worktree and commits only named files', async t => {

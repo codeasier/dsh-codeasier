@@ -6,7 +6,7 @@
 
 ## Inputs, capabilities and stops
 
-Read the complete issue and comments through a verified forge interface, plus repository guidance and related code/docs/tests. Bind the repository origin, issue number/URL, full local base commit, dedicated branch and canonical absolute worktree path. Know the actual Git and project check entrypoints before edits. Use available DSH `read`/`glob`/`grep`, `edit`/`write`, `bash` with explicit `workdir`, and `ask_user_question`; this asset registers none of those tools. The executable preflight/verification examples need Git, Node 22+ and `/bin/bash`. Forge support and authentication are caller prerequisites, not an adapter implemented here.
+Read the complete issue and comments through a verified forge interface, plus repository guidance and related code/docs/tests. Bind the repository origin, issue number/URL, full local base commit, dedicated branch and canonical absolute worktree path. Know the actual Git and project check entrypoints before edits. Use available DSH `read`/`glob`/`grep`, `edit`/`write`, `bash` with explicit `workdir`, and `ask_user_question`; this asset registers none of those tools. On pinned DSH `0.2.0-rc.2`, questions require the exact live runtime root: an owned child returns missing choices/confirmations to the main/root Agent rather than waiting for a human reply or treating pending/unavailable questions as authorization. The executable preflight/verification examples need Git, Node 22+ and `/bin/bash`. Forge support and authentication are caller prerequisites, not an adapter implemented here.
 
 | Situation | Required behavior / offline evidence |
 |---|---|

@@ -6,7 +6,7 @@
 
 ## 输入、能力与停止条件
 
-通过已经核实的 forge 接口读取完整 issue 与全部评论，再读取仓库规范和相关代码、文档、测试。绑定仓库 origin、issue 编号/URL、本地完整基线 commit、专属分支和规范绝对 worktree 路径。编辑前明确实际 Git 与项目检查入口。使用可用的 DSH `read`/`glob`/`grep`、`edit`/`write`、显式 `workdir` 的 `bash` 和 `ask_user_question`；此资源不注册这些工具。可执行前置检查/验证示例需要 Git、Node 22+ 与 `/bin/bash`。Forge 能力和认证是调用方前置条件，不是本资源实现的适配器。
+通过已经核实的 forge 接口读取完整 issue 与全部评论，再读取仓库规范和相关代码、文档、测试。绑定仓库 origin、issue 编号/URL、本地完整基线 commit、专属分支和规范绝对 worktree 路径。编辑前明确实际 Git 与项目检查入口。使用可用的 DSH `read`/`glob`/`grep`、`edit`/`write`、显式 `workdir` 的 `bash` 和 `ask_user_question`；此资源不注册这些工具。固定 DSH `0.2.0-rc.2` 的问答要求精确的 live runtime root：owned child 将缺失选择/确认交回主/root Agent，不等待人类回复，也不把 pending/不可用问答当作授权。可执行前置检查/验证示例需要 Git、Node 22+ 与 `/bin/bash`。Forge 能力和认证是调用方前置条件，不是本资源实现的适配器。
 
 | 场景 | 必须行为 / 离线证据 |
 |---|---|

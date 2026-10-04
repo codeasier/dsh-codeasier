@@ -9,10 +9,10 @@ import { inspectPlugins } from '../scripts/lib/plugins.mjs';
 const repository = fileURLToPath(new URL('../', import.meta.url));
 const coreEnglish = ['README.md', 'docs/README.md', 'docs/architecture.md', 'docs/plugin-development.md',
   'docs/contracts.md', 'docs/tui-admission-gap.md', 'plugins/cross-review/README.md'];
-const docEnglish = (await readdir(resolve(repository, 'docs')))
-  .filter(path => path.endsWith('.md') && !path.endsWith('.zh-CN.md')).map(path => `docs/${path}`);
-const pluginEnglish = (await inspectPlugins(repository)).map(plugin => `plugins/${plugin.id}/README.md`);
-const english = [...new Set([...coreEnglish, ...docEnglish, ...pluginEnglish])];
+const english = [...new Set([...coreEnglish,
+  ...(await readdir(resolve(repository, 'docs'), { recursive: true })).filter(path => path.endsWith('.md') && !path.endsWith('.zh-CN.md')).map(path => `docs/${path}`),
+  ...(await inspectPlugins(repository)).map(plugin => `plugins/${plugin.id}/README.md`),
+])];
 const chinese = path => path.replace(/\.md$/, '.zh-CN.md');
 const all = english.flatMap(path => [path, chinese(path)]);
 const source = path => readFile(resolve(repository, path), 'utf8');

@@ -1,0 +1,8 @@
+{
+  "schemaVersion": 1,
+  "id": "issue-review",
+  "kind": "skill",
+  "status": "implemented",
+  "description": "Evidence-only analysis of one GitHub issue and an explicitly confirmed review comment; no code changes.",
+  "skill": "plugins/issue-review/SKILL.md"
+}

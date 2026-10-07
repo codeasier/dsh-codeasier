@@ -93,3 +93,43 @@ test('package allowlist covers bilingual reader documentation and both indices',
     assert.ok(pkg.files.some(included => path === included || path.startsWith(`${included}/`)), `Not covered by package files: ${path}`);
   }
 });
+
+// Focused authored-prose regressions, not profile boot or general model-compliance tests.
+test('cross-review guides distinguish configuration-save and review-start diagnostics', async () => {
+  const setup = await source('src/plugins/cross-review/configuration.ts');
+  const startup = await source('src/plugins/cross-review/service.ts');
+  const saveMessages = ['Configuration authorization denied by host policy', 'Native configuration authorization is unavailable'];
+  const startMessages = ['Review cost authorization rejected', 'Native startup authorization is unavailable'];
+  for (const message of saveMessages) assert.ok(setup.includes(message));
+  assert.ok(startup.includes(startMessages[1]));
+  assert.ok(startup.includes('Review cost authorization ${outcome}'));
+  for (const path of ['plugins/cross-review/README.md', 'docs/contracts.md'].flatMap(path => [path, chinese(path)])) {
+    const lines = (await source(path)).split('\n');
+    for (const [tool, messages, otherMessages] of [
+      ['cross_config_save', saveMessages, startMessages],
+      ['cross_review_start', startMessages, saveMessages],
+    ]) {
+      const diagnostic = lines.find(line => line.startsWith(`- \`${tool}\`:`));
+      assert.ok(diagnostic, `${path}: missing stage-specific ${tool} diagnostic`);
+      for (const message of messages) assert.ok(diagnostic.includes(message), `${path}: missing ${tool} error ${message}`);
+      for (const message of otherMessages) assert.ok(!diagnostic.includes(message), `${path}: ${tool} uses another stage's error`);
+    }
+  }
+});
+
+test('cross-review boot remediation acknowledges composed permission presets', async () => {
+  for (const path of ['plugins/cross-review/README.md', 'plugins/cross-review/README.zh-CN.md']) {
+    const text = await source(path);
+    assert.ok(text.includes('permission-presets'), `${path}: missing preset-composition prerequisite`);
+    assert.ok(text.includes('defaultPreset'), `${path}: missing matching session-default prerequisite`);
+    assert.doesNotMatch(text, /boot with a user overlay that overrides only the `approval` row|用只覆盖 `approval` 行/);
+  }
+});
+
+test('cross-review completion guidance limits partial Host masking to the affected fields', async () => {
+  const skill = await source('plugins/cross-review/SKILL.md');
+  assert.ok(skill.includes('report only those keys as masked'));
+  assert.ok(skill.includes('unless all of its relevant keys are shadowed'));
+  assert.ok((await source('docs/contracts.md')).includes('only those fields are masked'));
+  assert.ok((await source('docs/contracts.zh-CN.md')).includes('仅这些字段被覆盖'));
+});

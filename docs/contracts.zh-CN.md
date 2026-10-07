@@ -75,5 +75,7 @@
 
 ### Setup 与启动的授权诊断
 
-- 在 `/cross-review setup` 或评审启动时出现 `Configuration authorization denied by host policy`（或 `Native configuration authorization is unavailable`）：所属会话的有效审批策略为 `never`，或未挂载审批服务。保存配置与启动付费工作各自需要一次原生 `allowed-once` 裁决；`never` 是拒绝而非一揽子许可；审批策略与沙箱档位相互独立，因为这两类操作都不受沙箱约束（一次固定路径的 Host 原子写入；付费的提供方派发）。请在有效策略能够询问的会话中重试。用通用文件/shell 工具手写该固定配置路径不是替代方案：它既不产生 `allowed-once` 记录，也只是绕开拒绝而非回应拒绝。
-- Setup 保存成功、但所选字段的 `sources` 为 `host-plugin`：这些字段由 Host 覆盖层拥有，因此在生效优先级（默认值 < 全局文件 < 本地文件 < Host 覆盖 < 单次调用）下文件虽已记录却不生效。解决它意味着另行编辑覆盖层；Setup 绝不触碰 profile。
+- `cross_config_save`: `Configuration authorization denied by host policy` 表示有效策略为 `never`；`Native configuration authorization is unavailable` 表示未挂载审批服务。若服务已挂载但没有可用应答器，则返回 `Configuration authorization unavailable`。
+- `cross_review_start`: `Review cost authorization rejected` 会在 `never` 策略下出现，但也可能表示在 `ask` 策略下明确拒绝；`Native startup authorization is unavailable` 表示未挂载审批服务。若服务已挂载但没有可用应答器，则返回 `Review cost authorization unavailable`。不要仅凭 `rejected` 推断有效策略。
+- 保存配置与启动付费工作各自需要一次原生 `allowed-once` 裁决。审批策略与沙箱档位相互独立，因为这两类操作都不受沙箱约束（一次固定路径的 Host 原子写入；付费的提供方派发）。请在能够取得同意的会话中重试。在随附的 `permission-presets` 组合中，仅覆盖审批策略的启动叠加层可能造成默认值不匹配并导致挂载失败；若要保留完全访问和 `ask`，需另行配置匹配的预设及 `defaultPreset`。Setup 不修改 profile。用通用文件/shell 工具手写该固定配置路径不是替代方案：它既不产生 `allowed-once` 记录，也只是绕开拒绝而非回应拒绝。
+- Setup 保存成功、所选字段的 `sources` 为 `host-plugin`，表示在生效优先级（默认值 < 全局文件 < 本地文件 < Host 覆盖 < 单次调用）下仅这些字段被覆盖。其他已保存字段仍可能生效：Host 的 `concurrency` 覆盖不会遮蔽文件中的评审者或超时。应逐字段报告来源，包括嵌套的模型裁决者字段；只有所有相关字段都被遮蔽时，才能将整份文件描述为不生效。调整被遮蔽字段的覆盖层是单独的用户决策；Setup 绝不触碰 profile。

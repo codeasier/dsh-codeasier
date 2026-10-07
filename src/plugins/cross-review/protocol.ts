@@ -41,7 +41,7 @@ const judgeLayerSchema = z.union([
   z.strictObject({ kind: z.literal('parent') }),
   z.strictObject({ kind: z.literal('model').optional(), provider: route.optional(), model: route.optional(), maxTokens: positiveInteger.optional() }),
 ]);
-const layerSchema = configSchema.partial().extend({ judge: judgeLayerSchema.optional() });
+export const layerSchema = configSchema.partial().extend({ judge: judgeLayerSchema.optional() });
 
 /** Freeze every owned node; never freezes or retains the caller's input objects. */
 export function freezeRecursively<T>(value: T): T {

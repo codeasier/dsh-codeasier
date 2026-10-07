@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { execFileSync } from 'node:child_process';
 import { randomUUID } from 'node:crypto';
-import { lstat, mkdtemp, mkdir, realpath, rename, rm, writeFile } from 'node:fs/promises';
+import { appendFile, lstat, mkdtemp, mkdir, realpath, rename, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { basename, dirname, join, resolve } from 'node:path';
 import test, { type TestContext } from 'node:test';
@@ -90,7 +90,7 @@ async function fixture(t: TestContext, script: Script = () => empty, approval: '
   await ctx.plugin(SubagentRuntime, { maxDepth: 2, maxActiveSubagents: 8 }); await ctx.plugin(Spawn, { providerName: 'spawn' });
   const parent = await harness.create(SessionId('service-parent'), { provider: 'offline', model: 'parent' }, { cwd: root });
   const storeRoot = join(scratch, 'store'); const store = await openReviewStore(ctx, storeRoot); openedStore = store;
-  service = new CrossReviewService(ctx, store, options); const current = service;
+  service = new CrossReviewService(ctx, store, { configurationHome: scratch, ...options }); const current = service;
   async function preview(settings: ReviewConfig = config()) { return current.preview(parent, { kind: 'local', root }, [{ source: 'test', value: settings }]); }
   async function start(plan: ReviewPlan): Promise<RunRecord> {
     parentPlan = plan;
@@ -140,6 +140,30 @@ test('actual Host mounts without TUI and registers native tools and human comman
   await host.dispose();
   for (const name of names) assert.equal(f.ctx.tools.get(name, f.parent), undefined);
   assert.equal(f.ctx.commands.find(f.parent, 'review'), undefined); assert.equal(f.ctx.get('crossReview', false), undefined);
+});
+
+test('new review previews load global then worktree-local files before Host and invocation overlays', { timeout: 20_000 }, async t => {
+  const f = await fixture(t, () => assert.fail('configuration must not start reviewers'), 'ask', { configLayers: [{ source: 'host-plugin', value: { concurrency: 4 } }] });
+  const home = dirname(f.root);
+  await mkdir(join(home, '.dsh')); await mkdir(join(f.root, '.dsh'));
+  await writeFile(join(home, '.dsh', 'cross-review.json'), JSON.stringify(config({ concurrency: 1, timeoutMs: 15_000 })));
+  await writeFile(join(f.root, '.dsh', 'cross-review.json'), JSON.stringify({ concurrency: 3, timeoutMs: 20_000 }));
+  await assert.rejects(f.service.preview(f.parent, { kind: 'local', root: f.root }), /restricted evidence path/, 'Setup does not weaken the existing runtime evidence exclusion');
+  // Explicit fixture project policy, not a setup side effect or evidence bypass.
+  await appendFile(join(f.root, '.git', 'info', 'exclude'), '\n.dsh/cross-review.json\n');
+  const first = await f.service.preview(f.parent, { kind: 'local', root: f.root });
+  assert.equal(first.config.concurrency, 4); assert.equal(first.config.timeoutMs, 20_000);
+  assert.equal(first.sources.concurrency, 'host-plugin'); assert.match(first.sources.timeoutMs!, /^local:/);
+  assert.match(first.sources.reviewers!, /^global:/);
+  const overridden = await f.service.preview(f.parent, { kind: 'local', root: f.root }, [{ source: 'invocation', value: { concurrency: 5, reviewers: config().reviewers.slice(0, 1) } }]);
+  assert.equal(overridden.config.concurrency, 5); assert.equal(overridden.config.reviewers.length, 1);
+  assert.equal(overridden.sources.reviewers, 'invocation');
+  await writeFile(join(f.root, '.dsh', 'cross-review.json'), JSON.stringify({ timeoutMs: 25_000 }));
+  const next = await f.service.preview(f.parent, { kind: 'local', root: f.root });
+  assert.equal(next.config.timeoutMs, 25_000); assert.equal(first.config.timeoutMs, 20_000, 'Already frozen previews stay unchanged');
+  await writeFile(join(f.root, '.dsh', 'cross-review.json'), '{');
+  await assert.rejects(f.service.preview(f.parent, { kind: 'local', root: f.root }), /JSON|position|property/i);
+  assert.equal(f.adapter.calls.length, 0); assert.deepEqual(f.store.list(), []);
 });
 
 test('plain DSH no-TUI review completes from events without status-driven scheduling', { timeout: 20_000 }, async t => {

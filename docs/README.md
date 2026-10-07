@@ -8,6 +8,7 @@
 |---|---|---|
 | Repository overview and development checks | [Overview](../README.md) / [Checks](../README.md#development) | [概览](../README.zh-CN.md) / [开发检查](../README.zh-CN.md#开发与验证) |
 | cross-review configuration, tools and lifecycle | [Plugin guide](../plugins/cross-review/README.md) | [插件指南](../plugins/cross-review/README.zh-CN.md) |
+| cross-review native setup and optional original Skill (separate installation; `/review` unchanged) | [Setup guide](../plugins/cross-review/README.md#setup-and-optional-skill-front-door) / [Skill instructions](../plugins/cross-review/SKILL.md) | [初始化指南](../plugins/cross-review/README.zh-CN.md#初始化与可选-skill-入口) / [Skill 指令](../plugins/cross-review/SKILL.md) |
 | One-question clarification and consensus | [understand-me](../plugins/understand-me/README.md) | [understand-me](../plugins/understand-me/README.zh-CN.md) |
 | Read-only audit and authorized documentation fixes | [docs-governance](../plugins/docs-governance/README.md) | [docs-governance](../plugins/docs-governance/README.zh-CN.md) |
 | Canonical handoff and confirmed intake | [handoff](../plugins/handoff/README.md) | [handoff](../plugins/handoff/README.zh-CN.md) |

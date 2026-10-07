@@ -33,6 +33,7 @@ test('collection descriptors and native patch identities are canonical; default 
   assert.ok(crossReview, 'The legacy cross-review identity must remain in the collection');
   assert.equal(crossReview.kind, 'native'); assert.equal(crossReview.status, 'implemented');
   assert.equal(crossReview.entry, 'dsh-codeasier/plugins/cross-review');
+  assert.equal(crossReview.skill, 'plugins/cross-review/SKILL.md');
   assert.deepEqual(crossReview.legacyEntries, ['dsh-codeasier']);
   assert.equal(crossReview.defaultEnabled, true);
   assert.equal(crossReview.patch, 'plugins/cross-review/cordis.patch.yml');
@@ -89,6 +90,20 @@ test('skill scaffold is an instruction asset without any native activation or in
   assert.equal(plugin.kind, 'skill'); assert.equal(plugin.skill, 'plugins/handoff-notes/SKILL.md');
   await assert.rejects(lstat(join(root, 'src/plugins/handoff-notes')), { code: 'ENOENT' });
   await assert.rejects(lstat(join(root, 'plugins/handoff-notes/cordis.patch.yml')), { code: 'ENOENT' });
+});
+
+test('native descriptors can advertise only canonical validated thin Skill assets without activating them', async t => {
+  const root = await scratch(t); await scaffoldPlugin(root, 'native-front');
+  const path = join(root, 'plugins/native-front/plugin.json');
+  const descriptor = JSON.parse(await readFile(path, 'utf8'));
+  descriptor.skill = 'plugins/native-front/SKILL.md'; await writeFile(path, JSON.stringify(descriptor));
+  await assert.rejects(inspectPlugins(root), /ENOENT/);
+  await writeFile(join(root, descriptor.skill), '---\nname: wrong\ndescription: Thin entry\n---\n');
+  await assert.rejects(inspectPlugins(root), /Invalid skill header/);
+  await writeFile(join(root, descriptor.skill), '---\nname: native-front\ndescription: Thin entry\n---\n');
+  const [plugin] = await inspectPlugins(root); assert.equal(plugin.kind, 'native'); assert.equal(plugin.defaultEnabled, false);
+  descriptor.skill = '../escape/SKILL.md'; await writeFile(path, JSON.stringify(descriptor));
+  await assert.rejects(inspectPlugins(root), /Noncanonical skill asset/);
 });
 
 test('scaffolding rejects invalid IDs, unknown kinds, destination collisions and symlinked parents before writing', async t => {

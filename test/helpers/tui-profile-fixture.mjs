@@ -87,7 +87,7 @@ export async function apply(ctx, config) {
       void witness({ stage: 'model-call', provider: options.provider, model: options.model, purpose: options.purpose ?? null, toolNames: options.tools?.map(tool => tool.name) ?? [] });
       assert.equal(options.provider, 'fixture-only');
       assert.equal(options.purpose, undefined, 'auxiliary model calls must not be composed');
-      assert.ok(calls.length < (requireCommand ? 6 : 10), 'unexpected fixture request budget exceeded');
+      assert.ok(calls.length < (requireCommand ? 8 : 12), 'unexpected fixture request budget exceeded');
       calls.push({ provider: options.provider, model: options.model, sessionId: options.sessionId, purpose: options.purpose ?? null });
       let requested;
       if (options.model === 'fixture-parent') {
@@ -95,7 +95,9 @@ export async function apply(ctx, config) {
         assert.equal(options.sessionId, owner.session.id);
         await nativeVerification;
         const count = calls.filter(call => call.model === 'fixture-parent').length;
-        if (count === 1) requested = [{ name: 'cross_review_start', args: { planId: plan.id } }];
+        if (count === 1) requested = [{ name: 'bash', args: { command: 'pwd', description: 'Verify ordinary Host shell execution', workdir: config.repo } }];
+        else if (count === 2) requested = [{ name: 'read', args: { file_path: `${config.repo}/main.ts` } }];
+        else if (count === 3) requested = [{ name: 'cross_review_start', args: { planId: plan.id } }];
         else if (nativeControlState === 'report') requested = [{ name: 'cross_review_report', args: { runId: completed.id } }];
         else if (['stale', 'cleanup'].includes(nativeControlState)) requested = [{ name: 'cross_review_control', args: {
           runId: completed.id, expectedRevision: completed.revision - (nativeControlState === 'stale' ? 1 : 0), action: 'cleanup',
@@ -142,7 +144,15 @@ export async function apply(ctx, config) {
   }));
   stops.push(ctx.on('tools/result', (exec, result) => {
     if (exec.agent !== owner) return undefined;
-    if (exec.name === 'cross_review_start') {
+    if (['bash', 'read'].includes(exec.name)) {
+      if (result.isError) void fail(new Error(`Ordinary ${exec.name} failed: ${result.error.message}`));
+      else {
+        const text = result.content.filter(block => block.type === 'text').map(block => block.text).join('\n');
+        try { assert.ok(text.includes(exec.name === 'bash' ? config.repo : 'export const VALUE = 1;')); }
+        catch (error) { void fail(error); }
+        void witness({ stage: 'ordinary-tool', toolName: exec.name, isError: result.isError, ownerSessionId: owner.session.id });
+      }
+    } else if (exec.name === 'cross_review_start') {
       if (result.isError) void fail(new Error(`Native startup rejected: ${result.error.message}`));
       else void witness({ stage: 'native-start-receipt', receipt: result.value });
     } else if (commandAvailable === false && ['cross_review_report', 'cross_review_control'].includes(exec.name)) {

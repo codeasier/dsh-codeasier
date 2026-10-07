@@ -141,7 +141,7 @@ async function rehearsal(t, { omit = [], prepare, tape, final, delegated = false
     }
     const filename = { 'node --test greeting.test.mjs': 'greeting.test.mjs', 'node --test greeting-doc.test.mjs': 'greeting-doc.test.mjs' }[args.command];
     assert.ok(filename, 'Only fixed, local fixture checks execute');
-    return new Promise(resolveResult => execFile(process.execPath, ['--test', filename], { cwd: root, env: environment, timeout: 10_000, signal: exec.signal },
+    return new Promise(resolveResult => execFile(process.execPath, ['--test', '--test-reporter=tap', filename], { cwd: root, env: environment, timeout: 10_000, signal: exec.signal },
       (error, stdout, stderr) => resolveResult({ state: 'finished', command: args.command, cwd: root, exit_code: error ? error.code : 0, stdout, stderr })));
   });
   tool('job_output', { job_id: string, wait: { type: 'boolean' } }, async args => {

@@ -24,7 +24,7 @@ export interface ServiceOptions { configLayers?: readonly ConfigLayer[]; preauth
 
 /** Single host authority. Status/report reads do not start work or enforce timers. */
 export class CrossReviewService {
-  readonly runtimeId = randomUUID();
+  readonly runtimeId: string;
   private readonly plans = new Map<string, ReviewPlan>();
   private readonly consumedPreauthorizations = new Set<string>();
   private readonly live = new Map<string, LiveRun>();
@@ -43,6 +43,7 @@ export class CrossReviewService {
   private readonly shutdown = new AbortController();
 
   constructor(private readonly ctx: Context, private readonly store: ReviewStore, private readonly options: ServiceOptions = {}) {
+    this.runtimeId = store.runtimeId;
     this.driver = new NativeReviewerDriver(ctx);
     this.unregisterStart = ctx.tools.register(defineTool({
       name: 'cross_review_start', description: 'Start one frozen preview after native cost approval. Requires an open parent turn; never bypasses host policy.',
@@ -127,6 +128,7 @@ export class CrossReviewService {
   subscribe(listener: (record: RunRecord) => void): () => void { this.assertOpen(); this.listeners.add(listener); return () => { this.listeners.delete(listener); }; }
   private async update(id: string, action: string, mutate: (record: RunRecord) => void, detail = ''): Promise<RunRecord> {
     const result = await this.store.update(id, current => {
+      if (current.owner.runtimeId !== this.runtimeId) throw new Error('Run runtime ownership mismatch');
       const next = structuredClone(current);
       mutate(next);
       next.revision = current.revision + 1;
@@ -447,19 +449,22 @@ export class CrossReviewService {
 
   async recover(): Promise<void> {
     this.assertOpen();
-    for (const previous of this.store.list()) {
+    const recovered = await this.store.recover(previous => {
       parseRecord(previous);
       if (previous.attempts.some(a => a.childId && this.ctx.agents.get(SessionId(a.childId)))) throw new Error('Predecessor still has live reviewers; ownership takeover refused');
-      await this.update(previous.id, 'recovered', r => {
-        r.owner.runtimeId = this.runtimeId;
-        for (const attempt of r.attempts) if (['pending', 'provisioning', 'running'].includes(attempt.state)) attempt.state = 'interrupted';
-        if (r.cancellationIntent) r.state = 'cancelled';
-        else if (!terminal(r.state) && !(r.state === 'awaiting_timeout' || (r.state === 'awaiting_judge' && r.config.judge.kind === 'parent'))) {
-          r.state = 'interrupted';
-          if (r.config.judge.kind === 'model' && r.attempts.some(a => a.kind === 'judge' && a.state === 'interrupted')) r.failure = 'Recovered model judging is interrupted; no automatic paid replay';
-        }
-      }, 'Evidence hash revalidated and read bindings reconstructed; confirmed results reused; unknown paid work not replayed');
-    }
+      const next = structuredClone(previous);
+      next.owner.runtimeId = this.runtimeId;
+      for (const attempt of next.attempts) if (['pending', 'provisioning', 'running'].includes(attempt.state)) attempt.state = 'interrupted';
+      if (next.cancellationIntent) next.state = 'cancelled';
+      else if (!terminal(next.state) && !(next.state === 'awaiting_timeout' || (next.state === 'awaiting_judge' && next.config.judge.kind === 'parent'))) {
+        next.state = 'interrupted';
+        if (next.config.judge.kind === 'model' && next.attempts.some(a => a.kind === 'judge' && a.state === 'interrupted')) next.failure = 'Recovered model judging is interrupted; no automatic paid replay';
+      }
+      next.revision++; next.updatedAt = Date.now();
+      next.audit.push({ at: next.updatedAt, action: 'recovered', detail: 'Evidence hash revalidated and read bindings reconstructed; confirmed results reused; unknown paid work not replayed' });
+      return parseRecord(next);
+    });
+    for (const record of recovered) this.emit(record);
   }
   dispose(): Promise<void> {
     return this.disposal ??= (async () => {

@@ -154,6 +154,29 @@ test('plain DSH no-TUI review completes from events without status-driven schedu
   assert.deepEqual(f.ctx.agents.list().map(a => a.session.id), [f.parent.session.id]); assert.equal(creationListeners(f.ctx), baseline);
 });
 
+test('another Host activates against the shared root without interrupting or recovering live paid work', { timeout: 20_000 }, async t => {
+  const entered = deferred(); const f = await fixture(t, options => blocked(options.signal, entered)); f.approve();
+  const run = await f.start(await f.preview(config({ concurrency: 1 }))); await entered.promise;
+  const before = f.store.get(run.id)!;
+  const peer = await fixture(t); await peer.service.dispose();
+  const host = await peer.ctx.plugin(Host, { root: f.storeRoot, review: config() });
+  const backend = peer.ctx.crossReview;
+  assert.notEqual(backend.runtimeId, f.service.runtimeId);
+  assert.deepEqual(f.store.get(run.id), before);
+  assert.deepEqual(await backend.list(peer.parent), []);
+  await assert.rejects(backend.status(peer.parent, run.id), /ownership mismatch/);
+  const observations: RunRecord[] = []; const stop = backend.subscribe(record => observations.push(record));
+  await backend.recover(); assert.equal(observations.length, 0);
+  assert.equal(f.store.get(run.id)?.state, 'running');
+  await f.service.dispose();
+  const calls = peer.adapter.calls.length;
+  await backend.recover();
+  assert.equal(observations.length, 1); assert.equal(observations[0]?.state, 'interrupted');
+  assert.equal(observations[0]?.owner.runtimeId, backend.runtimeId);
+  assert.equal(peer.adapter.calls.length, calls, 'Recovery must never replay the unknown model calls');
+  stop(); await host.dispose();
+});
+
 for (const mode of ['guard', 'never', 'unavailable', 'absent', 'wrong-digest'] as const) {
   test(`startup ${mode} creates no reviewer or paid attempt`, { timeout: 20_000 }, async t => {
     const digests: string[] = []; const f = await fixture(t, () => assert.fail('unauthorized reviewer'), mode === 'never' ? 'never' : mode === 'absent' ? 'absent' : 'ask', { preauthorizedDigests: digests });

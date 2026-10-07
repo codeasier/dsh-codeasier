@@ -29,6 +29,8 @@ test/<id>.test.ts                # 稳定身份检查 + TODO 行为契约
 
 通用包导出和 TypeScript 的 include 已覆盖新功能目录。无需修改 cross-review 或根 API。脚手架不加入聚合 bundle。其身份测试**不能**证明行为已完成迁移；尚未解决的行为测试会明确标记为 TODO。
 
+原生 Host 导入（`@deepseek-ai/dsh-*`、Cordis 和 schemastery）应放入 `peerDependencies`，仓库检查所需固定版本放入 `devDependencies`。DSH profile 在 `autoInstallPeers: false` 下通过公共运行时解析提供它们。打包私有 `dsh-tools` 依赖可能遮蔽 Host 注册表，而循环仍来自安装目录；调度器 Symbol 不同会使**所有**工具调用失败。Profile 验收不得通过额外安装 `agent-loop` 掩盖问题；应同时验证普通工具和插件自身工具。
+
 完成原生插件的步骤：
 
 1. 使用已确认的公开 DSH 服务实现 Host。导出有效的 Cordis 命名空间（`name`、`inject`、`Config`、`apply`），而不是默认导出的目录对象。声明必需服务；校验实际运行时输入，而不只是编辑器 schema。

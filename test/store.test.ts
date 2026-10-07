@@ -102,22 +102,55 @@ test('tampered snapshot bytes in the owned durable JSON fail open before any rec
   await assert.rejects(f.open(), /snapshot|hash|Evidence|schema/i);
 });
 
-test('exact ownership-root lock excludes independent processes and releases cleanly', { timeout: 20_000 }, async t => {
+test('independent processes share fresh transactions while runtime leases prevent live recovery', { timeout: 20_000 }, async t => {
   const f = await fixture(t);
   const helper = fileURLToPath(new URL('./helpers/store-worker.mjs', import.meta.url));
   const child = spawn(process.execPath, ['--import', 'tsx', helper, f.ownershipRoot], { cwd: resolve(fileURLToPath(new URL('..', import.meta.url))), stdio: ['pipe', 'pipe', 'pipe'] });
   let output = ''; let error = '';
   child.stdout.on('data', chunk => { output += String(chunk); }); child.stderr.on('data', chunk => { error += String(chunk); });
   t.after(() => { if (child.exitCode === null) child.kill('SIGTERM'); });
-  const opened = new Promise<void>((resolveOpened, reject) => {
-    child.stdout.on('data', () => { if (output.includes('opened\n')) resolveOpened(); });
-    child.once('exit', code => { if (!output.includes('opened\n')) reject(new Error(`Worker startup failed (${code}): ${error}`)); });
+  const waitFor = (text: string) => output.includes(text) ? Promise.resolve() : new Promise<void>((resolveOutput, reject) => {
+    const listener = () => { if (output.includes(text)) { child.stdout.off('data', listener); resolveOutput(); } };
+    child.stdout.on('data', listener);
+    child.once('exit', code => { if (!output.includes(text)) reject(new Error(`Worker exited (${code}): ${error}`)); });
   });
-  await opened;
-  await assert.rejects(f.open(), /lock|timeout|busy|held/i);
+  await waitFor('runtime:');
+  const runtimeId = /runtime:([^\n]+)/.exec(output)![1]!;
+  const store = await f.open();
+  const record = structuredClone(f.record()); record.owner.runtimeId = runtimeId;
+  child.stdin.write(JSON.stringify({ kind: 'put', record }) + '\n'); await waitFor('stored\n');
+  const own = f.record(); await store.put(own);
+  assert.equal(store.get(record.id)?.revision, 0, 'Every write reloads peer commits before publication');
+  assert.deepEqual(await store.recover(current => transition(current, next => { next.owner.runtimeId = store.runtimeId; })), [store.get(own.id)], 'A live foreign runtime cannot be recovered');
+  output = '';
+  child.stdin.write(JSON.stringify({ kind: 'update', id: record.id }) + '\n'); await waitFor('stored\n');
+  await assert.rejects(store.update(record.id, current => {
+    assert.equal(current.revision, 1, 'The fresh transaction sees the peer update, not its stale local read');
+    throw new Error('Stale control revision');
+  }), /Stale control revision/);
+  const reopened = await f.open();
+  assert.equal(reopened.list().length, 2, 'No peer aggregate was lost to a cached whole-file rewrite');
   const exited = once(child, 'exit'); child.stdin.end('close\n'); const [code] = await exited;
   assert.equal(code, 0, error); assert.match(output, /closed/);
-  const store = await f.open(); const record = f.record(); await store.put(record); assert.equal(store.get(record.id)?.snapshot.id, f.snapshot.id);
+  const recovered = await reopened.recover(current => transition(current, next => { next.owner.runtimeId = reopened.runtimeId; }));
+  assert.deepEqual(recovered.map(r => r.id), [record.id], 'Only the drained runtime is now recoverable');
+  assert.equal(recovered[0]?.revision, 2);
+});
+
+test('two stores in the same PID cannot take over each other and dead leases recover without replay', { timeout: 20_000 }, async t => {
+  const f = await fixture(t); const first = await f.open(); const second = await f.open();
+  const record = structuredClone(f.record()); record.owner.runtimeId = first.runtimeId; await first.put(record);
+  assert.deepEqual(await second.recover(() => assert.fail('live runtime must not be recovered')), []);
+  assert.equal(second.get(record.id)?.owner.runtimeId, first.runtimeId);
+  await first.close();
+  const recovered = await second.recover(current => transition(current, next => { next.owner.runtimeId = second.runtimeId; }));
+  assert.equal(recovered[0]?.id, record.id);
+  // An exited PID left by a crash is handled by the public native lock protocol.
+  await second.close();
+  await writeFile(join(f.ownershipRoot, `cross-review-runtime-${second.runtimeId}.lock`), '2147483647\n');
+  const third = await f.open();
+  assert.equal((await third.recover(current => transition(current, next => { next.owner.runtimeId = third.runtimeId; })))[0]?.revision, 2);
+  assert.deepEqual(f.ctx.storage.backend.names(), [], 'Transaction backends must be unregistered after each operation');
 });
 
 test('ownership root rejects relative and symlink traversal before cached domain use', { timeout: 20_000 }, async t => {

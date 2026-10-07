@@ -27,6 +27,7 @@
 | 无 React/TUI 的 Host；可选能力拒绝及其自身释放 | 实际 Host 挂载测试和 `tui.test.ts` 公共接缝/边界测试 |
 | 固定原始交付版本 DSH 的评审、原生报告/控制工具、过期修订拒绝、聚合体清理和释放 | `test:dsh-profile` 真实 CLI/配置/PTY 验收关卡；不可用的可选命令必须显示原生工具指引，并保持未注册 |
 | 成功通过生态准入的 TUI 命令及报告场景消费 | 单独的 `test:tui-profile` 完整验收关卡在已安装的固定版本上仍未满足；绝不能以原生工具证据或 Loader 的拒绝证据替代它 |
+| 原创 `/cross-review` Skill 入口、setup 与评审意图分流、固定作用域路径与确认后的原生配置写入 | `cross-review-setup.test.ts` 真实 Host 注册、保存/取消/释放、不安全路径拒绝与重读验证；`service.test.ts` 文件/Host/单次调用优先级及未放宽的证据排除策略；不声称 Skill 安装、profile 验收或推理成功 |
 | 插件描述符、独立导出、带保护条件的旧版覆盖、禁用导入和安全的本地脚手架 | `plugin-repository.test.mjs`、`plugin-scaffold-boundaries.test.mjs`、`plugins:check`；仓库元数据不等于原生/TUI 准入 |
 | tarball 内容，以及不依赖 TUI/React 的生产 Host 导入 | 单独启用的 `test:package` 验收关卡，使用隔离的 HOME/存储和公共注册表依赖；不代表发布或向活动配置安装 |
 
@@ -41,7 +42,7 @@
 - `@deepseek-ai/dsh-llm`：公共模型目录/解析和最终流式边界。确切的子会话身份控制对冻结路由/上限的访问；管理控制器不能调用模型。不相关的 Host 请求不受影响。
 - `@deepseek-ai/dsh-user-approval`：公共 `request`、会话覆盖和已配置策略。`allowed-once` 是唯一的授权；原生审批要求存在开放回合。后端不会伪造回合，也不会插入优先应答方。
 - `@deepseek-ai/dsh-storage`、`dsh-storage-domain`、`dsh-storage-json`：专用的公共原生后端和域设施将操作路由到已知私有根目录。聚合体在写入前验证，并在重新打开时再次验证。JSON 发布协议记录了临时文件 fsync、rename 和 POSIX 目录 fsync。
-- `@deepseek-ai/dsh-atomic-write`：`withFileLock` **从打开域之前一直持有到关闭/排空完成**。只在更新缓存时短暂加锁，无法防止过期的跨进程状态。不会把实用函数 `writeFileAtomic` 与原生 JSON fsync 协议混为一谈。
+- `@deepseek-ai/dsh-atomic-write`：`withFileLock` **从打开域之前一直持有到关闭/排空完成**。只在更新缓存时短暂加锁，无法防止过期的跨进程状态。不会把实用函数 `writeFileAtomic` 与原生 JSON fsync 协议混为一谈。作用域初始化配置使用同一个公共锁，仅执行一次原子替换（`writeFileAtomic`，权限 `0600`）；该实用函数明确不负责崩溃持久性（fsync），因此初始化只声称原子替换，不声称崩溃持久性。
 - 可选 TUI：仅从 `/plugin-host`、`/extensions`、`/scenes` 导入类型；采用非强制能力探测，并以实际注册是否获准为准。`registerCommand` 使用清单中声明的贡献项。Cordis 文档将 `Fiber.ctx` 定义为实际的插件激活 Context；匹配的非零 fiber UID 证明激活所有权，而不是生态准入。从另一个插件的异步激活中借用的 grants 探测本身也可能被拒绝，因此不能替代适配器自身激活的注册证据。`Context.is` 能跨不同副本识别 Cordis 上下文；仅有 `instanceof` 不匹配不能解释拒绝原因。适配器从自身激活发出冻结的 `cross-review/tui-capabilities` 诊断；观察者故障不能改变注册或释放，该诊断也不是授权凭据。诊断不得使用 `extend()` 制造授权。不使用 `getHostAdmission`、`bindComponentIdentity`、根 React 导入、原始终端钩子或私有测试辅助函数。
 
 公共软件包文档随固定的软件包一起分发，来源为 [DSH 仓库](https://github.com/deepseek-ai/deepseek-harness) 和 [dsh-TUI](https://www.npmjs.com/package/@deepseek-harness-tui/dsh-tui)。锁文件记录确切解析到的产物。

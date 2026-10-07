@@ -8,6 +8,7 @@
 |---|---|---|
 | 仓库概览与开发检查 | [Overview](../README.md) / [Checks](../README.md#development) | [概览](../README.zh-CN.md) / [开发检查](../README.zh-CN.md#开发与验证) |
 | cross-review 配置、工具与生命周期 | [Plugin guide](../plugins/cross-review/README.md) | [插件指南](../plugins/cross-review/README.zh-CN.md) |
+| cross-review 原生初始化与可选原创 Skill（另行安装；`/review` 不变） | [Setup guide](../plugins/cross-review/README.md#setup-and-optional-skill-front-door) / [Skill instructions](../plugins/cross-review/SKILL.md) | [初始化指南](../plugins/cross-review/README.zh-CN.md#初始化与可选-skill-入口) / [Skill 指令](../plugins/cross-review/SKILL.md) |
 | 逐项澄清与共识确认 | [understand-me](../plugins/understand-me/README.md) | [understand-me](../plugins/understand-me/README.zh-CN.md) |
 | 只读审计与已授权文档修复 | [docs-governance](../plugins/docs-governance/README.md) | [docs-governance](../plugins/docs-governance/README.zh-CN.md) |
 | 规范交接与确认后接续 | [handoff](../plugins/handoff/README.md) | [handoff](../plugins/handoff/README.zh-CN.md) |

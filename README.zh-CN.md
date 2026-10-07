@@ -87,7 +87,9 @@ Host 要求绝对路径的私有本地 `root`，并显式指定评审者路由�
 }
 ```
 
-这些都是示例占位值，不代表相应模型路由存在。Preview 检查已挂载的模型目录和精确解析结果，冻结生效配置并报告每个字段的来源。调用配置覆盖 Host 配置层；派发时不允许静默替换模型。
+这些都是示例占位值，不代表相应模型路由存在。Preview 检查已挂载的模型目录和精确解析结果，冻结生效配置并报告每个字段的来源。生效优先级为默认值 < 全局文件 < 本地文件 < Host 覆盖 < 单次调用；评审者数组整体替换，不拼接。本地配置为所属 Agent 的规范 `cwd/.dsh/cross-review.json`，全局为规范 `homedir/.dsh/cross-review.json`；不向上搜索项目，各 worktree 独立。新设置只影响新预览，不改变冻结的预览/运行。派发时不允许静默替换模型。
+
+原创的 [cross-review Skill](plugins/cross-review/SKILL.md) 通过四个独立原生 `cross_config_*` 工具（完整目录、预览、授权保存、重读验证）指引 `setup`/`init`（默认 local，接受位置参数 `local`/`global` 或 `--local`/`--global`）及明确的自然语言初始化。Setup 不调用评审工具或模型；要求 root 明确确认和原生开放 turn 授权，拒绝畸形文件，失败时停止，不回退到通用文件系统/shell。验证只证明 schema/目录/解析，不证明凭据有效或推理成功。详见[初始化指南](plugins/cross-review/README.zh-CN.md#初始化与可选-skill-入口)。只有另行得到用户授权并安装 Skill 后，`/cross-review` 才可用；这里不承诺安装命令、profile 修改或 TUI 准入。`/review` 保持不变。
 
 原生入口提供以下工具：
 

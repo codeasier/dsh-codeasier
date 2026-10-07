@@ -71,7 +71,7 @@ async function fixture(t: TestContext, script: Script = () => empty) {
   let updateHook: ((id: string, transform: (r: RunRecord) => RunRecord, next: () => Promise<RunRecord>) => Promise<RunRecord>) | undefined;
   let closeCalls = 0;
   const store: ReviewStore = { ...nativeStore, update(id, transform) { return updateHook ? updateHook(id, transform, () => nativeStore.update(id, transform)) : nativeStore.update(id, transform); }, close() { closeCalls++; return nativeStore.close(); } };
-  const service = new CrossReviewService(ctx, store); const additionalStores: ReviewStore[] = [];
+  const service = new CrossReviewService(ctx, store, { configurationHome: scratch }); const additionalStores: ReviewStore[] = [];
   t.after(async () => {
     await service.dispose().catch(() => {}); for (const s of additionalStores) await s.close().catch(() => {});
     await parentHandle.dispose(); await ctx.fiber.dispose();

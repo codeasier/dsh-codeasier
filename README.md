@@ -87,7 +87,9 @@ The Host requires an absolute, private local `root` and explicit reviewer routes
 }
 ```
 
-These are placeholders, not a claim that those routes exist. Preview verifies the mounted model catalog and exact resolution, freezes effective configuration and reports each field's source. Invocation configuration overrides the Host layer. No silent model substitution is allowed at dispatch.
+These are placeholders, not a claim that those routes exist. Preview verifies the mounted model catalog and exact resolution, freezes effective configuration and reports each field's source. Effective precedence is defaults < global file < local file < Host overlay < invocation; reviewer arrays replace rather than concatenate. Local configuration is the owning Agent's canonical `cwd/.dsh/cross-review.json`, global is canonical `homedir/.dsh/cross-review.json`; there is no upward project search, so worktrees are independent. New settings affect new previews, not frozen previews/runs. No silent model substitution is allowed at dispatch.
+
+The original [cross-review Skill](plugins/cross-review/SKILL.md) guides `setup`/`init` (local by default; positional `local`/`global` or `--local`/`--global`) and explicit natural-language setup through four independent native `cross_config_*` tools: full catalog, preview, approved save and re-read validation. Setup never calls review tools or models; it requires explicit root confirmation plus native open-turn approval, rejects malformed files and stops on failures without generic FS/shell fallback. Validation proves schema/catalog/resolution only, not credential or inference success. See the [setup guide](plugins/cross-review/README.md#setup-and-optional-skill-front-door). `/cross-review` is available only after separately user-authorized Skill installation; no installation command, profile change or TUI admission is implied. `/review` stays unchanged.
 
 The native front door exposes:
 

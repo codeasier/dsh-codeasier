@@ -40,6 +40,29 @@ Disable the whole plugin with `- id: cross-review` / `disabled: true` in an over
 
 The optional `tui.patch.yml` is not in the default bundle. It requires this Host and the public TUI services; disable its row `cross-review-optional-tui` separately when disabling the Host. It is a composition resource, not a claim that DSH discovers per-plugin patches automatically or admits a manifested TUI Component. The package-root `dsh-plugin.json` still describes only this optional adapter. Current public admission limitations remain in [the verified gap](../../docs/tui-admission-gap.md).
 
+## Setup and optional Skill front door
+
+The original [cross-review Skill](SKILL.md) guides native setup or review; it does not replace the backend or change `/review`. `/cross-review` becomes an available Skill only after separate, explicitly user-authorized Skill installation through a verified public DSH mechanism. Neither bundle loading nor repository metadata installs it; no installation command or TUI admission is implied. [cross-review-audit](../cross-review-audit/README.md) remains a separate read-only audit identity.
+
+The Skill routes first-argument `setup`/`init` and explicit natural-language initialization intent to setup, never to review. Scope accepts positional `local`/`global` or `--local`/`--global`, defaults to local, and rejects contradictory scopes or unknown flags/arguments. Missing decisions and save confirmation go through `ask_user_question` at the exact live runtime root; children return pending questions to that root.
+
+Four independently registered native tools perform setup without model calls or reviewers:
+
+- `cross_config_catalog {}`: list all mounted providers and exact models, grouped by provider. Recommendations do not auto-select routes.
+- `cross_config_preview {scope, configuration}`: require reviewer choices, fill defaults and return `setupId`, `path`, `exists`, `configuration`, `effectiveConfig`, `sources`, `expiresAt` without writing.
+- `cross_config_save {setupId}`: after explicit human confirmation, request native open-turn approval for the full selection and exact create/replace path; honor host policy and refusal.
+- `cross_config_validate {scope}`: re-read the saved file and check runtime schema, effective configuration, catalog and exact resolution—not credentials or successful inference.
+
+Writes use native atomic replacement with mode `0600`, reject unsafe symlink/hardlink paths, and recheck the preview's file/layer state. Configuration files must be valid UTF-8 JSON no larger than 1 MiB. Atomic replacement is not a crash-durability/fsync or adversarial filesystem-isolation guarantee.
+
+Choose reviewer `id`, `provider`, `model`, `focus`, optional `maxTokens`, optional model judge (otherwise parent), concurrency and timeout. Native defaults are concurrency `2`, timeout `120000` ms and parent judge; reviewers have no default. Preview the full selection, existing-file replacement and effective overrides before confirming. Cancel/missing confirmation never saves. Setup never calls `cross_review_*`, starts a review, falls back to generic FS/shell writes or bypasses headless/host approval policy. On capability/read/approval/write/validation failure, stop and preserve state; malformed existing files are refused, not silently overwritten. A post-write validation failure is not successful setup or permission to roll back another writer.
+
+Local configuration is fixed at `cwd/.dsh/cross-review.json` under the owning Agent's **canonical cwd**; global configuration is at canonical `homedir/.dsh/cross-review.json`. There is **no upward project search**: worktrees are independent, and the evidence target does not change the local file. These paths are distinct from the Host's private run-storage `root`.
+
+**Before local review:** the existing fail-closed evidence policy rejects changed or untracked `.dsh` runtime files, including configuration. Keep `cwd/.dsh/cross-review.json` untracked and **Git-ignored** in that worktree; an ignore rule does not exempt changed tracked runtime files. Setup validation checks configuration, not successful review-evidence capture. Setup never edits `.gitignore` or `.git/info/exclude`, stages/untracks files or automatically chooses an ignore policy; the user must separately choose and authorize that policy. Global configuration outside the project needs no project ignore step. Other changed/untracked runtime files remain subject to evidence rejection.
+
+Effective precedence: **defaults < global file < local file < Host overlay < invocation**. Reviewer arrays replace, not concatenate; model-judge fields merge until the kind changes, and parent clears model-judge fields. Setup previews show the effective file/Host layers; invocation overrides are shown by a later review preview. Configuration updates affect new previews, not already frozen previews/runs. Setup approval never authorizes paid review.
+
 ## Tools and lifecycle
 
 - `cross_review_preview`: validate exact model routes and immutable evidence without a model call.
@@ -53,6 +76,6 @@ Immutable evidence, native fresh children and scoped execution guards remain unc
 
 ## Verification
 
-Existing `test/{evidence,protocol,native-driver,service,store,judge,lifecycle-races,tui}.test.*` remain cross-review's acceptance tests. `test/plugin-repository.test.mjs` verifies collection layout/exports/patch identities, scaffold safety and native disabled/disposal semantics. `test:package` verifies production exports; `test:dsh-profile` verifies supported native behavior in an isolated profile. The stricter `test:tui-profile` remains a separate unmet gate—not waived by the refactor.
+`test/cross-review-setup.test.ts` covers native setup registration, scoped file loading, confirmation/cancellation/disposal, safe replacement and runtime re-read validation with offline fixtures; `service.test.ts` checks file/Host/invocation precedence while preserving the evidence exclusion. These are not installed Skill discovery or real-provider inference acceptance. Existing `test/{evidence,protocol,native-driver,service,store,judge,lifecycle-races,tui}.test.*` remain cross-review's acceptance tests. `test/plugin-repository.test.mjs` verifies collection layout/exports/patch identities, scaffold safety and native disabled/disposal semantics. `test:package` verifies production exports; `test:dsh-profile` verifies supported native behavior in an isolated profile. The stricter `test:tui-profile` remains a separate unmet gate—not waived by the refactor.
 
 See [architecture](../../docs/architecture.md), [contracts](../../docs/contracts.md) and [plugin development/migration](../../docs/plugin-development.md). No active-profile installation, release or paid review is implied.

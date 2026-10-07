@@ -9,6 +9,8 @@ import { openReviewStore } from './store.js';
 import { readEvidence, type EvidenceTarget } from './evidence.js';
 import type { ReviewReport } from './records.js';
 import { judgeDecisionSchema } from './protocol.js';
+import { ConfigurationService } from './configuration.js';
+export { ConfigurationService } from './configuration.js';
 
 export { CrossReviewService } from './service.js';
 export type { ReviewPlan, Control, ServiceOptions } from './service.js';
@@ -80,6 +82,27 @@ export async function apply(ctx: Context, rawConfig: unknown): Promise<void> {
     const backend = service;
     const withdraw = ctx.provide('crossReview', backend);
     const registrations: (() => void)[] = [];
+    const setup = new ConfigurationService(ctx, [{ source: 'host-plugin', value: config.review }]);
+    registrations.push(ctx.tools.register(defineTool({
+      name: 'cross_config_catalog', description: 'List the complete current Host provider/model catalog for cross-review setup. No inference or reviewer execution.',
+      parameters: {}, output: textOutput,
+      async execute(_args, exec) { exec.signal.throwIfAborted(); return JSON.stringify(await setup.catalog(owner(exec.agent))); },
+    })));
+    registrations.push(ctx.tools.register(defineTool({
+      name: 'cross_config_preview', description: 'Validate a complete cross-review setup selection and show destination, existing-file replacement, effective layers and all choices without writing. scope local uses owning cwd/.dsh/cross-review.json; global uses ~/.dsh/cross-review.json.',
+      parameters: { scope: { type: 'string', enum: ['local', 'global'], required: true }, configuration: { type: 'json', required: true } }, output: textOutput,
+      async execute(args, exec) { exec.signal.throwIfAborted(); return JSON.stringify(await setup.preview(owner(exec.agent), args.scope as 'local' | 'global', args.configuration)); },
+    })));
+    registrations.push(ctx.tools.register(defineTool({
+      name: 'cross_config_save', description: 'Save one owned setup preview only after explicit native open-turn configuration approval; reject changed files/layers. Re-read and runtime-validate after writing. Does not authorize or start paid reviews.',
+      parameters: { setupId: { type: 'string', required: true } }, output: textOutput,
+      async execute(args, exec) { return JSON.stringify(await setup.save(owner(exec.agent), args.setupId, exec.signal, exec.callId)); },
+    })));
+    registrations.push(ctx.tools.register(defineTool({
+      name: 'cross_config_validate', description: 'Re-read selected cross-review file and validate schema, layered effective configuration, exact current provider/model catalog and resolution. No paid inference.',
+      parameters: { scope: { type: 'string', enum: ['local', 'global'], required: true } }, output: textOutput,
+      async execute(args, exec) { exec.signal.throwIfAborted(); return JSON.stringify(await setup.validate(owner(exec.agent), args.scope as 'local' | 'global')); },
+    })));
     registrations.push(ctx.tools.register(defineTool({
       name: 'cross_review_preview', description: 'Validate reviewer/model configuration and prepare immutable evidence without paid model calls. request: {target?,configuration?,notes?,pack?}. Default target is owning local workspace.',
       parameters: { request: { type: 'json', required: true } }, output: textOutput,
@@ -134,6 +157,7 @@ export async function apply(ctx: Context, rawConfig: unknown): Promise<void> {
     if (commands && !ctx.get('tuiPluginHost', false)) registrations.push(commands.register(createReviewCommand(backend)));
     ctx.effect(() => async () => {
       for (const unregister of registrations.reverse()) unregister();
+      await setup.dispose();
       try { await backend.dispose(); } finally { withdraw(); }
     });
   } catch (error) {

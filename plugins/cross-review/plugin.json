@@ -5,6 +5,7 @@
   "status": "implemented",
   "description": "Independent native reviewers, evidence-bound execution, verified findings and durable recovery.",
   "entry": "dsh-codeasier/plugins/cross-review",
+  "skill": "plugins/cross-review/SKILL.md",
   "legacyEntries": ["dsh-codeasier"],
   "defaultEnabled": true,
   "patch": "plugins/cross-review/cordis.patch.yml",

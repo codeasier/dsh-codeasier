@@ -12,6 +12,7 @@ import { consolidateResults } from './judge.js';
 import { NativeReviewerDriver, type NativeAttempt } from './native-driver.js';
 import { immutable, parseRecord, terminal, type RunRecord, type ReviewReport, type AttemptRecord } from './records.js';
 import type { ReviewStore } from './store.js';
+import { loadFileLayers, validateRoutes } from './configuration.js';
 
 export interface ReviewPlan {
   id: string; digest: string; ownerSessionId: string; project: string; config: ReviewConfig;
@@ -20,7 +21,7 @@ export interface ReviewPlan {
 export interface Control { runId: string; expectedRevision: number }
 interface ActiveAttempt { abort: AbortController; task: Promise<void>; handle?: NativeAttempt }
 interface LiveRun { owner: Agent; active: Map<string, ActiveAttempt>; timer?: ReturnType<typeof setTimeout>; pumping: boolean; stopping?: boolean }
-export interface ServiceOptions { configLayers?: readonly ConfigLayer[]; preauthorizedDigests?: readonly string[] }
+export interface ServiceOptions { configLayers?: readonly ConfigLayer[]; preauthorizedDigests?: readonly string[]; configurationHome?: string }
 
 /** Single host authority. Status/report reads do not start work or enforce timers. */
 export class CrossReviewService {
@@ -156,15 +157,9 @@ export class CrossReviewService {
   async preview(agent: Agent, target: EvidenceTarget, layers: readonly ConfigLayer[] = [], supplement: { notes?: readonly string[]; pack?: Readonly<Record<string, string>> } = {}): Promise<ReviewPlan> {
     const project = await this.project(agent);
     if (await realpath(target.root) !== project) throw new Error('Evidence target must belong to the owning project');
-    const { config, sources } = parseConfig([...(this.options.configLayers ?? []), ...layers]);
-    const routes = [...config.reviewers, ...(config.judge.kind === 'model' ? [config.judge] : [])];
-    for (const route of routes) {
-      if (!this.ctx.llm.listProviders().some(p => p.id === route.provider)) throw new Error(`Unavailable provider: ${route.provider}`);
-      const available = await this.ctx.llm.listModels(route.provider);
-      if (!available.some(m => m.provider === route.provider && m.id === route.model)) throw new Error(`Unavailable exact model: ${route.provider}/${route.model}`);
-      const actual = await this.ctx.llm.resolveModelInfo(route.provider, route.model);
-      if (actual.provider !== route.provider || actual.id !== route.model) throw new Error('Model resolution changed the requested route');
-    }
+    const fileLayers = await loadFileLayers(project, this.options.configurationHome);
+    const { config, sources } = parseConfig([...fileLayers, ...(this.options.configLayers ?? []), ...layers]);
+    await validateRoutes(this.ctx, config);
     const snapshot = await prepareEvidence(target, supplement);
     this.assertAgent(agent);
     const digest = createHash('sha256').update(JSON.stringify({ project, config, snapshotId: snapshot.id, schemaVersion: 1, policyVersion: 1 })).digest('hex');

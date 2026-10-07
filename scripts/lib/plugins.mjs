@@ -9,7 +9,7 @@ const text = z.string().trim().min(1);
 const base = { schemaVersion: z.literal(1), id: pluginId, status: z.enum(['implemented', 'scaffold']), description: text };
 export const descriptorSchema = z.discriminatedUnion('kind', [
   z.strictObject({ ...base, kind: z.literal('native'), entry: text, patch: text, defaultEnabled: z.boolean().default(false), legacyEntries: z.array(text).optional(),
-    tui: z.strictObject({ entry: text, patch: text }).optional() }),
+    tui: z.strictObject({ entry: text, patch: text }).optional(), skill: text.optional() }),
   z.strictObject({ ...base, kind: z.literal('skill'), skill: text }),
 ]);
 
@@ -116,7 +116,10 @@ export async function inspectPlugins(inputRoot, { built = false } = {}) {
           if (built) await checkedPath(root, path);
         }
       }
-    } else {
+    }
+    // A native plugin may ship a separately installed thin Skill front door.
+    // The asset does not replace its Host implementation or activate itself.
+    if (descriptor.kind === 'skill' || descriptor.skill !== undefined) {
       if (descriptor.skill !== `plugins/${id}/SKILL.md`) throw new Error(`Noncanonical skill asset: ${id}`);
       const source = await readFile(await checkedPath(root, descriptor.skill), 'utf8');
       const frontmatter = /^---\r?\n([\s\S]*?)\r?\n---\r?\n/.exec(source);

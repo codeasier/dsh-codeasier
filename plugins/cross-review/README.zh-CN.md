@@ -63,6 +63,14 @@ Skill 将首参数 `setup`/`init` 和明确的自然语言初始化意图路由�
 
 生效优先级：**默认值 < 全局文件 < 本地文件 < Host 覆盖 < 单次调用**。评审者数组整体替换，不拼接；模型裁决者字段在类型改变前合并，parent 清除模型裁决字段。Setup 预览展示文件/Host 生效层；单次调用覆盖在后续评审预览中展示。配置更新只影响新预览，不改变已冻结的预览/运行。初始化授权绝不等于付费评审授权。
 
+### 首次使用的两个坑
+
+有两个前置条件会以 fail-closed 方式失败，而单看工具返回的报错无法解释原因。
+
+**所属会话的有效审批策略必须能够"询问"。** 当 profile 以审批策略 `never` 运行（常见的"完全访问、不弹审批"配置）时，保存配置与启动评审都无法进行：后端会为确切的选择或已冻结的付费计划申请一次原生裁决，而 `never` 是拒绝，不是一揽子许可。`cross_config_save` 会以 `Configuration authorization denied by host policy` 失败；未挂载审批服务时则是 `Native configuration authorization is unavailable`；`cross_review_start` 同样如此。审批策略与文件沙箱档位相互独立——这两件事都不受沙箱约束：Setup 通过 Host 自身的一次原子替换写入固定路径，启动则派发付费的提供方调用；所以沙箱全开并不能给出其中任何一项同意。请在有效策略为 `ask` 的会话中重试——切换会话权限档位，或用只覆盖 `approval` 行、不改动沙箱档位的用户叠加层启动。绝不要用通用文件/shell 写入绕开该拒绝：手写的 `cross-review.json` 不携带 `allowed-once` 授权记录。无头预授权仍然要求 `ask` 以及一个单独组合、可信的原生应答器。
+
+**Host 覆盖层优先于你刚保存的文件。** 在"默认值 < 全局文件 < 本地文件 < Host 覆盖 < 单次调用"的优先级下，若 profile 补丁里的 `cross-review` 行带有完整 `review` 块，Setup 可能保存并验证成功，但每个生效字段仍来自该覆盖层：预览与校验会逐键报告 `sources: host-plugin`，文件不改变任何行为。在假定文件已生效之前，请对照 `effectiveConfig` 与 `sources`，而不是你提交的 `configuration`。要让文件生效，需要另行编辑或移除覆盖层的 `review` 块；Setup 绝不触碰 profile。
+
 ## 工具与生命周期
 
 - `cross_review_preview`：验证确切的模型路由和不可变证据，不调用模型。

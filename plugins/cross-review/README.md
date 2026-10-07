@@ -63,6 +63,14 @@ Local configuration is fixed at `cwd/.dsh/cross-review.json` under the owning Ag
 
 Effective precedence: **defaults < global file < local file < Host overlay < invocation**. Reviewer arrays replace, not concatenate; model-judge fields merge until the kind changes, and parent clears model-judge fields. Setup previews show the effective file/Host layers; invocation overrides are shown by a later review preview. Configuration updates affect new previews, not already frozen previews/runs. Setup approval never authorizes paid review.
 
+### First-run pitfalls
+
+Two prerequisites fail closed in ways the tool result alone does not explain.
+
+**The owning session's effective approval policy must be able to ask.** Where a profile runs with approval policy `never` — a common "full access, no prompts" setup — configuration saves and review startups cannot proceed: the backend requests one native decision for the exact selection or the frozen paid plan, and `never` is a rejection, not blanket permission. `cross_config_save` fails with `Configuration authorization denied by host policy`, or with `Native configuration authorization is unavailable` when no approval service is mounted; `cross_review_start` fails the same way. Approval policy is independent of the file-sandbox mode, because neither operation is sandbox-bounded: setup replaces one fixed path through the Host's own atomic write, and startup dispatches paid provider calls. A fully open sandbox therefore grants neither consent. Retry in a session whose effective policy is `ask` — switch the session's permission mode, or boot with a user overlay that overrides only the `approval` row and leaves the sandbox mode unchanged. Never route around the refusal with generic file/shell writes: a hand-written `cross-review.json` carries no `allowed-once` authorization record. Headless preauthorization still requires `ask` plus a separately composed, trusted native answerer.
+
+**A Host overlay outranks the file just saved.** Under defaults < global file < local file < Host overlay < invocation, a profile patch carrying a `cross-review` row with a complete `review` block can leave setup saved and validated while every effective field still comes from that overlay: preview and validation report `sources: host-plugin` per key and the file changes nothing. Compare `effectiveConfig` and `sources` — not the submitted `configuration` — before assuming the file applies. Making the file effective requires separately editing or removing the overlay's `review` block; setup never touches the profile.
+
 ## Tools and lifecycle
 
 - `cross_review_preview`: validate exact model routes and immutable evidence without a model call.

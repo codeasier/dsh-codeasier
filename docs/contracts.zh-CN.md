@@ -72,3 +72,8 @@
 - 原生取消是协作式的，并会等待静止，不是对任意同进程代码的强制终止。
 - 输出上限是**每个请求**的上限，不是货币限额或整个运行的支出限额。插件不会重试失败的编排尝试；有效的原生 Host/提供方请求策略仍然适用。
 - TUI 软件包将 working-activity 与较旧的 DSH/React peer 声明及运行时 `workspace:*` 清单一起打包。已验证全新和冻结锁文件的 pnpm 安装；npm 全新安装会拒绝这些清单。应使用固定的 pnpm 包管理器和锁文件。一次性配置会使用 CLI 的默认基础 bundle 和官方提升依赖/不自动安装 peer 的工作区布局来准备公共配置清单，然后在官方 CLI 安装软件包之前固定并验证 pnpm `11.21.0`；空的 Corepack HOME 不得选择随时间变化的 latest 包管理器版本。这种普通配置不会提供或绕过带清单的 Component 准入。依赖构建脚本以及 `pnpm run` 期间的隐式安装均被显式禁用；未应用任何第三方软件包补丁。不会用“所有随附配置功能均兼容”的声明掩盖这些事实。
+
+### Setup 与启动的授权诊断
+
+- 在 `/cross-review setup` 或评审启动时出现 `Configuration authorization denied by host policy`（或 `Native configuration authorization is unavailable`）：所属会话的有效审批策略为 `never`，或未挂载审批服务。保存配置与启动付费工作各自需要一次原生 `allowed-once` 裁决；`never` 是拒绝而非一揽子许可；审批策略与沙箱档位相互独立，因为这两类操作都不受沙箱约束（一次固定路径的 Host 原子写入；付费的提供方派发）。请在有效策略能够询问的会话中重试。用通用文件/shell 工具手写该固定配置路径不是替代方案：它既不产生 `allowed-once` 记录，也只是绕开拒绝而非回应拒绝。
+- Setup 保存成功、但所选字段的 `sources` 为 `host-plugin`：这些字段由 Host 覆盖层拥有，因此在生效优先级（默认值 < 全局文件 < 本地文件 < Host 覆盖 < 单次调用）下文件虽已记录却不生效。解决它意味着另行编辑覆盖层；Setup 绝不触碰 profile。

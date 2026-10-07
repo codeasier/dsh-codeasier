@@ -511,6 +511,60 @@ test('post-write runtime validation failure rejects save but preserves the compl
   await assert.rejects(f.save(plan.setupId), /unknown|expired|consum|stale|setup/i); f.noReviewers();
 });
 
+const configurationBytes = (value: ReviewConfig) => `${JSON.stringify(value, null, 2)}\n`;
+function configurationAtSize(size: number, multibyte = false): ReviewConfig {
+  const value = configuration(); value.reviewers[0]!.focus = '';
+  const remaining = size - Buffer.byteLength(configurationBytes(value), 'utf8');
+  assert.ok(remaining > 0);
+  value.reviewers[0]!.focus = multibyte ? 'é'.repeat(Math.floor(remaining / 2)) + 'x'.repeat(remaining % 2) : 'x'.repeat(remaining);
+  assert.equal(Buffer.byteLength(configurationBytes(value), 'utf8'), size);
+  return value;
+}
+
+for (const scope of ['local', 'global'] as const) {
+  for (const existing of [false, true]) {
+    test(`${scope} preview rejects formatting-expanded oversized output and preserves ${existing ? 'existing bytes' : 'an absent destination'}`, async t => {
+      const f = await fixture(t); const path = configPath(scope === 'local' ? f.root : f.home);
+      if (existing) await f.put(scope, configuration({ timeoutMs: 111 }));
+      const before = existing ? await readFile(path) : undefined;
+      const rootBefore = await readdir(f.root); const homeBefore = await readdir(f.home);
+      const input = configurationAtSize(1024 * 1024 + 1);
+      assert.ok(Buffer.byteLength(JSON.stringify(input), 'utf8') <= 1024 * 1024, 'compact JSON fits, but final indentation and newline do not');
+      await assert.rejects(f.service.preview(f.parent, scope, input), /oversized|size|large/i);
+      if (before) {
+        assert.deepEqual(await readFile(path), before);
+        assert.deepEqual((await f.service.validate(f.parent, scope)).configuration, configuration({ timeoutMs: 111 }));
+      } else { await absent(path); await absent(dirname(path)); }
+      assert.deepEqual(await readdir(f.root), rootBefore); assert.deepEqual(await readdir(f.home), homeBefore);
+      const valid = await f.service.preview(f.parent, scope, configuration());
+      assert.equal(valid.exists, existing, 'rejected input does not poison subsequent setup');
+      assert.equal(f.adapter.calls.length, 0); f.noReviewers();
+    });
+  }
+  for (const multibyte of [false, true]) {
+    for (const offset of [-1, 0, 1]) {
+      test(`${scope} setup enforces the final UTF-8 byte boundary ${offset >= 0 ? '+' : ''}${offset} with ${multibyte ? 'multibyte' : 'ASCII'} focus`, { timeout: 20_000 }, async t => {
+        const f = await fixture(t); const input = configurationAtSize(1024 * 1024 + offset, multibyte);
+        const expected = configurationBytes(input); const path = configPath(scope === 'local' ? f.root : f.home);
+        if (multibyte) assert.ok(expected.length < Buffer.byteLength(expected, 'utf8'), 'character count is not the byte limit');
+        if (offset > 0) {
+          await assert.rejects(f.service.preview(f.parent, scope, input), /oversized|size|large/i);
+          await absent(path); await absent(dirname(path)); assert.equal(f.adapter.calls.length, 0);
+        } else {
+          const plan = await f.service.preview(f.parent, scope, input); const requests = f.approve(plan);
+          await f.save(plan.setupId); assert.equal(requests(), 1);
+          assert.deepEqual(await readFile(path), Buffer.from(expected, 'utf8'), 'write reuses the exact formatted preview selection including its newline');
+          assert.equal((await lstat(path)).size, 1024 * 1024 + offset);
+          assert.equal((await lstat(path)).mode & 0o777, 0o600);
+          assert.deepEqual((await f.service.validate(f.parent, scope)).configuration, input);
+          assert.deepEqual(await readdir(dirname(path)), ['cross-review.json']);
+        }
+        f.noReviewers();
+      });
+    }
+  }
+}
+
 for (const kind of ['invalid-utf8', 'over-one-mib'] as const) {
   test(`loader, preview and validation reject ${kind} without changing bytes`, async t => {
     const f = await fixture(t); const path = await f.put('local', configuration());

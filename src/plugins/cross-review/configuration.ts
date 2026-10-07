@@ -15,6 +15,12 @@ const maxBytes = 1024 * 1024;
 const digest = (value: string) => createHash('sha256').update(value).digest('hex');
 const missing = (error: unknown) => (error as NodeJS.ErrnoException).code === 'ENOENT';
 
+function serializeConfiguration(configuration: ReviewConfig): string {
+  const bytes = `${JSON.stringify(configuration, null, 2)}\n`;
+  if (Buffer.byteLength(bytes, 'utf8') > maxBytes) throw new Error('Oversized configuration file');
+  return bytes;
+}
+
 /** Fixed paths, not caller-provided destinations. Worktrees never inherit a parent project's file. */
 export async function configurationPaths(cwd: string, home = homedir()) {
   const roots = await Promise.all([cwd, home].map(async root => {
@@ -79,7 +85,7 @@ interface SetupPlan {
   setupId: string; scope: ConfigurationScope; path: string; exists: boolean; configuration: ReviewConfig;
   effectiveConfig: ReviewConfig; sources: Readonly<Record<string, string>>; expiresAt: number; reviewPrerequisite: string;
 }
-interface PendingSetup { owner: Agent; cwd: string; paths: Awaited<ReturnType<typeof configurationPaths>>; plan: SetupPlan; previousDigest?: string; layersDigest: string }
+interface PendingSetup { owner: Agent; cwd: string; paths: Awaited<ReturnType<typeof configurationPaths>>; plan: SetupPlan; bytes: string; previousDigest?: string; layersDigest: string }
 
 /** Separate setup authority; confirmation here cannot authorize a review. */
 export class ConfigurationService {
@@ -120,13 +126,14 @@ export class ConfigurationService {
     await inspect(path, true);
     const previous = await readConfiguration(path);
     const candidate = parseConfig([{ source: 'setup', value: configuration }]).config;
+    const bytes = serializeConfiguration(candidate); // Bound the final formatted UTF-8 output, not compact JSON or character count.
     await validateRoutes(this.ctx, candidate);
     const effective = await this.effective(cwd, { scope, configuration: candidate });
     await validateRoutes(this.ctx, effective.config);
     this.assertAgent(agent);
     const plan = freezeRecursively({ setupId: randomUUID(), scope, path, exists: !!previous, configuration: candidate, effectiveConfig: effective.config, sources: effective.sources, expiresAt: Date.now() + 15 * 60_000, reviewPrerequisite: 'Local review rejects changed or unignored .dsh runtime files. Git-ignore the local configuration before local review using separately chosen project policy; setup does not change Git ignore rules.' });
     for (const [id, old] of this.pending) if (old.plan.expiresAt < Date.now()) this.pending.delete(id);
-    this.pending.set(plan.setupId, { owner: agent, cwd, paths, plan, previousDigest: previous && digest(previous.bytes), layersDigest: effective.layersDigest });
+    this.pending.set(plan.setupId, { owner: agent, cwd, paths, plan, bytes, previousDigest: previous && digest(previous.bytes), layersDigest: effective.layersDigest });
     return plan;
   }
   async validate(agent: Agent, scope: ConfigurationScope) {
@@ -177,7 +184,8 @@ export class ConfigurationService {
       await validateRoutes(this.ctx, plan.configuration); await validateRoutes(this.ctx, effective.config);
       signal.throwIfAborted(); this.assertAgent(agent);
       await inspect(plan.path, true);
-      await writeFileAtomic(plan.path, `${JSON.stringify(plan.configuration, null, 2)}\n`, { mode: 0o600, dirMode: 0o700 });
+      if (serializeConfiguration(plan.configuration) !== pending.bytes) throw new Error('Configuration output changed since preview');
+      await writeFileAtomic(plan.path, pending.bytes, { mode: 0o600, dirMode: 0o700 });
       // Failure is reported, never described as a successful setup; do not silently undo another writer.
       const result = await this.validate(agent, plan.scope);
       if (JSON.stringify(result.configuration) !== JSON.stringify(plan.configuration) || JSON.stringify(result.effectiveConfig) !== JSON.stringify(plan.effectiveConfig)) throw new Error('Post-write configuration mismatch');

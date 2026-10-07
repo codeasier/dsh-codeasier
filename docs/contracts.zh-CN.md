@@ -72,3 +72,10 @@
 - 原生取消是协作式的，并会等待静止，不是对任意同进程代码的强制终止。
 - 输出上限是**每个请求**的上限，不是货币限额或整个运行的支出限额。插件不会重试失败的编排尝试；有效的原生 Host/提供方请求策略仍然适用。
 - TUI 软件包将 working-activity 与较旧的 DSH/React peer 声明及运行时 `workspace:*` 清单一起打包。已验证全新和冻结锁文件的 pnpm 安装；npm 全新安装会拒绝这些清单。应使用固定的 pnpm 包管理器和锁文件。一次性配置会使用 CLI 的默认基础 bundle 和官方提升依赖/不自动安装 peer 的工作区布局来准备公共配置清单，然后在官方 CLI 安装软件包之前固定并验证 pnpm `11.21.0`；空的 Corepack HOME 不得选择随时间变化的 latest 包管理器版本。这种普通配置不会提供或绕过带清单的 Component 准入。依赖构建脚本以及 `pnpm run` 期间的隐式安装均被显式禁用；未应用任何第三方软件包补丁。不会用“所有随附配置功能均兼容”的声明掩盖这些事实。
+
+### Setup 与启动的授权诊断
+
+- `cross_config_save`: `Configuration authorization denied by host policy` 表示有效策略为 `never`；`Native configuration authorization is unavailable` 表示未挂载审批服务。若服务已挂载但没有可用应答器，则返回 `Configuration authorization unavailable`。
+- `cross_review_start`: `Review cost authorization rejected` 会在 `never` 策略下出现，但也可能表示在 `ask` 策略下明确拒绝；`Native startup authorization is unavailable` 表示未挂载审批服务。若服务已挂载但没有可用应答器，则返回 `Review cost authorization unavailable`。不要仅凭 `rejected` 推断有效策略。
+- 保存配置与启动付费工作各自需要一次原生 `allowed-once` 裁决。审批策略与沙箱档位相互独立，因为这两类操作都不受沙箱约束（一次固定路径的 Host 原子写入；付费的提供方派发）。请在能够取得同意的会话中重试。在随附的 `permission-presets` 组合中，仅覆盖审批策略的启动叠加层可能造成默认值不匹配并导致挂载失败；若要保留完全访问和 `ask`，需另行配置匹配的预设及 `defaultPreset`。Setup 不修改 profile。用通用文件/shell 工具手写该固定配置路径不是替代方案：它既不产生 `allowed-once` 记录，也只是绕开拒绝而非回应拒绝。
+- Setup 保存成功、所选字段的 `sources` 为 `host-plugin`，表示在生效优先级（默认值 < 全局文件 < 本地文件 < Host 覆盖 < 单次调用）下仅这些字段被覆盖。其他已保存字段仍可能生效：Host 的 `concurrency` 覆盖不会遮蔽文件中的评审者或超时。应逐字段报告来源，包括嵌套的模型裁决者字段；只有所有相关字段都被遮蔽时，才能将整份文件描述为不生效。调整被遮蔽字段的覆盖层是单独的用户决策；Setup 绝不触碰 profile。

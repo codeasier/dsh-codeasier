@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { randomUUID } from 'node:crypto';
-import { chmod, link, lstat, mkdir, mkdtemp, readFile, readdir, realpath, rename, rm, symlink, writeFile } from 'node:fs/promises';
+import { chmod, link, lstat, mkdir, mkdtemp, readFile, readdir, realpath, rm, symlink, unlink, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { basename, dirname, join, resolve } from 'node:path';
 import test, { type TestContext } from 'node:test';
@@ -14,7 +14,7 @@ import Approval, { type ApprovalRequest } from '@deepseek-ai/dsh-user-approval';
 import Storage from '@deepseek-ai/dsh-storage';
 import SubagentRuntime from '@deepseek-ai/dsh-subagent';
 import * as Host from '../src/plugins/cross-review/index.js';
-import { ConfigurationService, loadFileLayers, validateRoutes } from '../src/plugins/cross-review/configuration.js';
+import { ConfigurationService, configurationPaths, loadFileLayers, validateRoutes } from '../src/plugins/cross-review/configuration.js';
 import { parseConfig, type ConfigLayer, type ReviewConfig } from '../src/plugins/cross-review/protocol.js';
 
 function deferred<T = void>() {
@@ -57,7 +57,7 @@ class OfflineAdapter extends LlmAdapter {
   }
 }
 
-async function fixture(t: TestContext, policy: 'ask' | 'never' | 'absent' = 'ask', hostLayers: readonly ConfigLayer[] = [], homeAtWorkspace = false) {
+async function fixture(t: TestContext, policy: 'ask' | 'never' | 'absent' = 'ask', hostLayers: readonly ConfigLayer[] = [], homeAtWorkspace = false, rootAliases = false) {
   const temp = await realpath(tmpdir());
   const scratch = await realpath(await mkdtemp(join(temp, 'dsh-cross-config-test-')));
   const root = join(scratch, 'repo'); const home = homeAtWorkspace ? root : join(scratch, 'home');
@@ -75,8 +75,11 @@ async function fixture(t: TestContext, policy: 'ask' | 'never' | 'absent' = 'ask
   const adapter = new OfflineAdapter(() => { const id = pendingSetupId; pendingSetupId = undefined; return id; });
   ctx.llm.registerAdapter(['offline'], adapter);
   const harness = await mountAgentLoopTestHarness(ctx);
-  const parent = await harness.create(SessionId(`configuration-parent-${randomUUID()}`), { provider: 'offline', model: 'parent' }, { cwd: root });
-  const service = new ConfigurationService(ctx, hostLayers, home);
+  const cwd = rootAliases ? join(scratch, 'cwd-alias') : root;
+  const configurationHome = rootAliases ? join(scratch, 'home-alias') : home;
+  if (rootAliases) { await symlink(root, cwd); await symlink(home, configurationHome); }
+  const parent = await harness.create(SessionId(`configuration-parent-${randomUUID()}`), { provider: 'offline', model: 'parent' }, { cwd });
+  const service = new ConfigurationService(ctx, hostLayers, configurationHome);
   ctx.tools.register(defineTool({
     name: 'fixture_config_save', description: 'Offline test entry to configuration save in the owning open turn.',
     parameters: { setupId: { type: 'string', required: true } },
@@ -206,6 +209,57 @@ test('loader discovers only each sibling worktree fixed file, never an ancestor 
   }
   assert.equal(f.adapter.calls.length, 0); f.noReviewers();
 });
+
+test('configuration roots accept cwd and HOME aliases but derive only canonical fixed paths', async t => {
+  const f = await fixture(t);
+  const cwdAlias = join(f.scratch, 'cwd-alias'); const homeAlias = join(f.scratch, 'home-alias');
+  await symlink(f.root, cwdAlias); await symlink(f.home, homeAlias);
+  assert.deepEqual(await configurationPaths(cwdAlias, homeAlias), { local: configPath(f.root), global: configPath(f.home) });
+  assert.deepEqual(await loadFileLayers(cwdAlias, homeAlias), [], 'aliases work even with no file configuration');
+  const global = configuration({ timeoutMs: 111 }); const local = { timeoutMs: 222 };
+  await f.put('global', global); await f.put('local', local);
+  const layers = await loadFileLayers(cwdAlias, homeAlias);
+  assert.deepEqual(layers.map(layer => layer.value), [global, local]);
+  assert.deepEqual(layers.map(layer => layer.source), [`global:${configPath(f.home)}`, `local:${configPath(f.root)}`]);
+  await assert.rejects(configurationPaths('relative-cwd', f.home), /absolute/i);
+  await assert.rejects(configurationPaths(f.root, 'relative-home'), /absolute/i);
+  const notDirectory = join(f.scratch, 'not-directory'); await writeFile(notDirectory, 'sentinel');
+  await assert.rejects(configurationPaths(notDirectory, f.home), /directory|unsafe/i);
+  assert.equal(f.adapter.calls.length, 0); f.noReviewers();
+});
+
+for (const scope of ['local', 'global'] as const) {
+  test(`${scope} setup through cwd and HOME aliases saves and validates the canonical destination`, { timeout: 20_000 }, async t => {
+    const f = await fixture(t, 'ask', [], false, true);
+    assert.notEqual(f.parent.session.header.cwd, f.root);
+    const plan = await f.service.preview(f.parent, scope, configuration());
+    assert.equal(plan.path, configPath(scope === 'local' ? f.root : f.home));
+    const requests = f.approve(plan); await f.save(plan.setupId); assert.equal(requests(), 1);
+    assert.deepEqual(JSON.parse(await readFile(plan.path, 'utf8')), plan.configuration);
+    const validated = await f.service.validate(f.parent, scope);
+    assert.equal(validated.path, plan.path); assert.deepEqual(validated.configuration, plan.configuration);
+    f.noReviewers();
+  });
+}
+
+for (const root of ['cwd', 'home'] as const) {
+  test(`save refuses a ${root} alias retargeted while approval is pending`, { timeout: 20_000 }, async t => {
+    const f = await fixture(t, 'ask', [], false, true);
+    const scope = root === 'cwd' ? 'local' : 'global';
+    const plan = await f.service.preview(f.parent, scope, configuration());
+    const alias = join(f.scratch, root === 'cwd' ? 'cwd-alias' : 'home-alias');
+    const replacement = join(f.scratch, `${root}-replacement`); await mkdir(replacement);
+    f.parent.ctx.on('approval/request', async () => {
+      assert.equal(resolve(alias), alias); assert.equal(dirname(alias), f.scratch);
+      assert.ok((await lstat(alias)).isSymbolicLink());
+      assert.equal(await realpath(alias), root === 'cwd' ? f.root : f.home);
+      await unlink(alias); await symlink(replacement, alias); return 'allowed-once';
+    });
+    await assert.rejects(f.save(plan.setupId), /roots changed since preview/i);
+    await absent(plan.path); await absent(dirname(plan.path)); await absent(join(replacement, '.dsh'));
+    f.noReviewers();
+  });
+}
 
 test('successful replacement is atomic and narrows an existing file to mode 0600', { timeout: 20_000 }, async t => {
   const f = await fixture(t); const path = await f.put('local', configuration({ timeoutMs: 111 }));
@@ -492,16 +546,12 @@ for (const scope of ['local', 'global'] as const) {
 }
 
 for (const scope of ['local', 'global'] as const) {
-  for (const kind of ['root-link', 'parent-link', 'target-link', 'dangling-target', 'directory-target'] as const) {
-    test(`${scope} configuration rejects ${kind} without following or modifying it`, async t => {
-      const f = await fixture(t); const root = scope === 'local' ? f.root : f.home;
+  for (const kind of ['parent-link', 'target-link', 'dangling-target', 'directory-target'] as const) {
+    test(`${scope} configuration beneath aliased roots rejects ${kind} without following or modifying it`, async t => {
+      const f = await fixture(t, 'ask', [], false, true); const root = scope === 'local' ? f.root : f.home;
       const outside = join(f.scratch, 'outside'); await mkdir(outside);
       const sentinel = join(outside, 'sentinel.json'); const bytes = JSON.stringify(configuration()); await writeFile(sentinel, bytes);
-      if (kind === 'root-link') {
-        assert.equal(await realpath(root), root); assert.equal(dirname(root), f.scratch);
-        const moved = join(f.scratch, `${scope}-real`); await absent(moved); await rename(root, moved); await symlink(moved, root);
-      }
-      else if (kind === 'parent-link') await symlink(outside, join(root, '.dsh'));
+      if (kind === 'parent-link') await symlink(outside, join(root, '.dsh'));
       else {
         await mkdir(join(root, '.dsh'));
         if (kind === 'directory-target') await mkdir(configPath(root));

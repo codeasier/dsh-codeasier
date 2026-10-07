@@ -2,7 +2,7 @@ import { createHash, randomUUID } from 'node:crypto';
 import { constants } from 'node:fs';
 import { lstat, mkdir, open, realpath } from 'node:fs/promises';
 import { homedir } from 'node:os';
-import { dirname, isAbsolute, join, resolve } from 'node:path';
+import { dirname, isAbsolute, join } from 'node:path';
 import type { Context } from '@deepseek-ai/cordis';
 import type { Agent } from '@deepseek-ai/dsh-agent';
 import type { ToolCallId } from '@deepseek-ai/dsh-llm';
@@ -17,12 +17,14 @@ const missing = (error: unknown) => (error as NodeJS.ErrnoException).code === 'E
 
 /** Fixed paths, not caller-provided destinations. Worktrees never inherit a parent project's file. */
 export async function configurationPaths(cwd: string, home = homedir()) {
-  for (const root of [cwd, home]) {
-    if (!isAbsolute(root) || resolve(root) !== root || await realpath(root) !== root) throw new Error('Configuration root must be a canonical absolute directory');
-    const info = await lstat(root);
+  const roots = await Promise.all([cwd, home].map(async root => {
+    if (!isAbsolute(root)) throw new Error('Configuration root must be an absolute directory');
+    const canonical = await realpath(root);
+    const info = await lstat(canonical);
     if (!info.isDirectory() || info.isSymbolicLink()) throw new Error('Unsafe configuration root');
-  }
-  return { global: join(home, '.dsh', filename), local: join(cwd, '.dsh', filename) };
+    return canonical;
+  }));
+  return { global: join(roots[1]!, '.dsh', filename), local: join(roots[0]!, '.dsh', filename) };
 }
 
 async function inspect(path: string, writable = false): Promise<void> {
@@ -77,7 +79,7 @@ interface SetupPlan {
   setupId: string; scope: ConfigurationScope; path: string; exists: boolean; configuration: ReviewConfig;
   effectiveConfig: ReviewConfig; sources: Readonly<Record<string, string>>; expiresAt: number; reviewPrerequisite: string;
 }
-interface PendingSetup { owner: Agent; cwd: string; plan: SetupPlan; previousDigest?: string; layersDigest: string }
+interface PendingSetup { owner: Agent; cwd: string; paths: Awaited<ReturnType<typeof configurationPaths>>; plan: SetupPlan; previousDigest?: string; layersDigest: string }
 
 /** Separate setup authority; confirmation here cannot authorize a review. */
 export class ConfigurationService {
@@ -124,7 +126,7 @@ export class ConfigurationService {
     this.assertAgent(agent);
     const plan = freezeRecursively({ setupId: randomUUID(), scope, path, exists: !!previous, configuration: candidate, effectiveConfig: effective.config, sources: effective.sources, expiresAt: Date.now() + 15 * 60_000, reviewPrerequisite: 'Local review rejects changed or unignored .dsh runtime files. Git-ignore the local configuration before local review using separately chosen project policy; setup does not change Git ignore rules.' });
     for (const [id, old] of this.pending) if (old.plan.expiresAt < Date.now()) this.pending.delete(id);
-    this.pending.set(plan.setupId, { owner: agent, cwd, plan, previousDigest: previous && digest(previous.bytes), layersDigest: effective.layersDigest });
+    this.pending.set(plan.setupId, { owner: agent, cwd, paths, plan, previousDigest: previous && digest(previous.bytes), layersDigest: effective.layersDigest });
     return plan;
   }
   async validate(agent: Agent, scope: ConfigurationScope) {
@@ -159,6 +161,7 @@ export class ConfigurationService {
     const outcome = await approval.request({ agent, toolName: 'cross_config_save', signal, ...(callId ? { callId } : {}), reason: `Save cross-review ${plan.scope} configuration to ${plan.path}; ${plan.exists ? 'replace the existing file only if unchanged' : 'create a new file'}. Complete selection and effective configuration: ${JSON.stringify(plan)}. This confirms configuration only, not paid review or inference.` });
     if (outcome !== 'allowed-once') throw new Error(`Configuration authorization ${outcome}`);
     signal.throwIfAborted(); this.assertAgent(agent);
+    if (JSON.stringify(await configurationPaths(cwd, this.home)) !== JSON.stringify(pending.paths)) throw new Error('Configuration roots changed since preview');
     await inspect(plan.path, true);
     // No directories or lock files are written before explicit native confirmation.
     await mkdir(dirname(plan.path), { recursive: true, mode: 0o700 });

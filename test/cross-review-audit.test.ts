@@ -4,7 +4,7 @@ import { createHash, randomUUID } from 'node:crypto';
 import { mkdtemp, mkdir, readFile, readdir, realpath, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { basename, dirname, join, resolve } from 'node:path';
-import test, { type TestContext } from 'node:test';
+import test, { beforeEach, type TestContext } from 'node:test';
 import { Context } from '@deepseek-ai/cordis';
 import Storage from '@deepseek-ai/dsh-storage';
 import Subagents from '@deepseek-ai/dsh-subagent';
@@ -20,6 +20,20 @@ import { openReviewStore } from '../src/plugins/cross-review/store.js';
 import { parseRecord, type RunRecord } from '../src/plugins/cross-review/records.js';
 import { parseConfig } from '../src/plugins/cross-review/protocol.js';
 import { canonicalFindingId } from '../src/plugins/cross-review/judge.js';
+
+// Host deliberately has no configurationHome override; isolate its real homedir() reads.
+// Scope HOME once per test, not once per fixture (some tests create two fixtures).
+beforeEach(async t => {
+  assert.ok('after' in t);
+  const temporary = await realpath(tmpdir()); const home = await realpath(await mkdtemp(join(temporary, 'dsh-audit-home-')));
+  const previousHome = process.env.HOME;
+  t.after(async () => {
+    if (previousHome === undefined) delete process.env.HOME; else process.env.HOME = previousHome;
+    assert.equal(dirname(home), temporary); assert.ok(basename(home).startsWith('dsh-audit-home-')); assert.equal(await realpath(home), home);
+    await rm(home, { recursive: true, force: true });
+  });
+  process.env.HOME = home;
+});
 
 class NoCalls extends LlmAdapter {
   calls = 0;

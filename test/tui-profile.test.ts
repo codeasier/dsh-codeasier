@@ -139,12 +139,16 @@ test(requireCommand
   assert.equal(manager.stdout.trim(), '11.21.0');
   t.diagnostic(`Disposable profile package manager: pnpm ${manager.stdout.trim()}`);
   phase = 'installing isolated packages';
-  const install = await executeIsolated(process.execPath, [cli, 'plugin', '--profile', profile, 'add', '@deepseek-harness-tui/dsh-tui@0.12.0', '@deepseek-ai/dsh-agent-loop@0.2.0-rc.2', artifact, fixturePackage, '--ignore-scripts', '--store-dir', join(home, 'pnpm-store')], {
+  const install = await executeIsolated(process.execPath, [cli, 'plugin', '--profile', profile, 'add', '@deepseek-harness-tui/dsh-tui@0.12.0', artifact, fixturePackage, '--ignore-scripts', '--store-dir', join(home, 'pnpm-store')], {
     cwd: repo, env, timeout: 150_000, maxBuffer: 8 * 1024 * 1024,
   });
   const manifest = JSON.parse(await readFile(manifestPath, 'utf8')) as { dsh?: { profile?: { bundles?: string[] } }; dependencies?: Record<string, string> };
   assert.ok(manifest.dependencies?.['@deepseek-harness-tui/dsh-tui']);
   assert.ok(manifest.dependencies?.['dsh-codeasier']);
+  assert.equal(manifest.dependencies?.['@deepseek-ai/dsh-agent-loop'], undefined, 'The fixture must not mask split Host/tool module identities with an extra loop installation');
+  for (const name of ['dsh-tools', 'dsh-agent', 'dsh-session', 'dsh-subagent']) {
+    await assert.rejects(realpath(join(profileDir, 'node_modules', '@deepseek-ai', name)), { code: 'ENOENT' }, 'Native peers must be supplied by the Host, not copied into the profile');
+  }
   t.diagnostic(`Disposable profile active bundles: ${JSON.stringify(manifest.dsh?.profile?.bundles)}`);
   assert.ok(manifest.dsh?.profile?.bundles?.includes('@deepseek-harness-tui/dsh-tui'));
   assert.ok(manifest.dsh?.profile?.bundles?.includes('dsh-codeasier-tui-fixture'));
@@ -158,6 +162,7 @@ test(requireCommand
     '- id: approval\n  config: { policy: ask }',
     '- id: subagent\n  config: { maxDepth: 2, maxActiveSubagents: 8 }',
     '- id: agent-default-model\n  config: { provider: fixture-only, model: fixture-parent }',
+    '- insert:\n    - id: fixture-ordinary-bash\n      name: "@deepseek-ai/dsh-tool-bash"\n      config: { enableRunInBackground: false }\n    - id: fixture-ordinary-fs\n      name: "@deepseek-ai/dsh-tool-fs"',
     `- id: dsh-tui\n  inject: [workspaceRegistry, agents, tuiWorkspaces, tuiScenes, tuiDialogs, tuiStatus, tuiShortcuts, tuiRenderers, tuiThemes, crossReviewFixture]\n  config: ${JSON.stringify({ provider: 'fixture-only', model: 'fixture-parent', cwd: repo, fullscreen: true, activity: false, lang: 'en', whale: false, terminalImages: false })}`,
     '- insert:\n    - id: cross-review-optional-tui\n      name: dsh-codeasier/plugins/cross-review/tui\n      inject: [crossReview, tuiPluginHost, tuiScenes, tuiStatus, crossReviewFixture]',
   ].join('\n') + '\n';
@@ -222,6 +227,9 @@ test(requireCommand
   assert.equal(typeof ready.runId, 'string'); assert.equal(typeof ready.revision, 'number');
   assert.equal(ready.requireCommand, requireCommand);
   assert.equal(typeof ready.commandAvailable, 'boolean');
+  const ordinary = events.filter(event => event.stage === 'ordinary-tool');
+  assert.deepEqual(ordinary.map(event => event.toolName), ['bash', 'read']);
+  assert.ok(ordinary.every(event => event.isError === false && event.ownerSessionId === ready.ownerSessionId));
   if (ready.commandAvailable) {
     phase = 'waiting for admitted adapter progress';
     await rendered('Cross-review: /review report');

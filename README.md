@@ -69,7 +69,7 @@ Native tools / human commands        Optional TUI adapter
 - Native tool restrictions plus a monotonic execution guard admit only snapshot reads and native `structured_output`. Generic filesystem, shell, network, MCP, delegation, session queries, scoped bypasses and `run_code` cannot execute. Reviewers never receive another reviewer's output.
 - Native terminal results and backend timers advance bounded work. Status reads never schedule it. Only terminal, schema-valid results count toward majority quorum; valid empty findings count, partial output does not.
 - Parent-session or explicitly configured model judging checks snapshot quotations, deduplicates canonical findings and records verification/rejection. Votes never establish correctness.
-- One durable run aggregate contains configuration/provenance, snapshot bytes/hash, attempts and native IDs, results, pending decisions, authorization, revision, cancellation intent and audit. A full-lifetime native writer lock protects the actual storage root **on one host/PID namespace**. It is not a distributed lease.
+- One durable run aggregate contains configuration/provenance, snapshot bytes/hash, attempts and native IDs, results, pending decisions, authorization, revision, cancellation intent and audit. Short native writer locks reopen the committed domain for each transaction; separate runtime leases prevent takeover of live runs **on one host/PID namespace**. Multiple DSH instances can share the root without holding its writer lock while idle.
 
 ## Configuration and invocation
 

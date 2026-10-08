@@ -95,6 +95,19 @@ test('package allowlist covers bilingual reader documentation and both indices',
 });
 
 // Focused authored-prose regressions, not profile boot or general model-compliance tests.
+test('cross-review Review instructions discover layered configuration rather than treating missing local as missing all', async () => {
+  const skill = await source('plugins/cross-review/SKILL.md');
+  const review = skill.split('## Review: native contract only')[1]?.split('## Authorship')[0];
+  assert.ok(review, 'Expected the Review-specific instructions');
+  assert.match(review, /omit `configuration`/);
+  assert.match(review, /automatically loads global and local file layers/);
+  assert.match(review, /local file is absent, continue with `cross_config_validate \{scope:"global"\}`/);
+  assert.match(review, /never infer that no configuration exists from a missing local file/);
+  assert.match(review, /both files are absent[\s\S]*Host overlay[\s\S]*invocation/);
+  assert.match(review, /Only a missing file permits continued discovery/);
+  assert.match(review, /malformed, unreadable or unsafe files and route\/catalog failures[\s\S]*stop/);
+});
+
 test('cross-review guides distinguish configuration-save and review-start diagnostics', async () => {
   const setup = await source('src/plugins/cross-review/configuration.ts');
   const startup = await source('src/plugins/cross-review/service.ts');

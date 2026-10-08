@@ -28,7 +28,7 @@ test('packed Host and optional entry import in a production-only project without
   const paths = packed.files.map(file => file.path);
   for (const required of ['dist/host.js', 'dist/host.d.ts', 'dist/tui.js', 'dist/protocol.js', 'dist/plugins/cross-review/index.js', 'dist/plugins/cross-review/index.d.ts', 'dist/plugins/cross-review/tui.js', 'dist/plugins/cross-review/protocol.js', 'plugins/cross-review/plugin.json', 'plugins/cross-review/README.md', 'plugins/cross-review/README.zh-CN.md', 'plugins/cross-review/cordis.patch.yml', 'plugins/cross-review/tui.patch.yml', 'dsh-plugin.json', 'cordis.patch.yml', 'LICENSE', 'README.md', 'README.zh-CN.md', 'docs/README.md', 'docs/README.zh-CN.md', 'docs/contracts.md', 'docs/contracts.zh-CN.md', 'docs/tui-admission-gap.md', 'docs/tui-admission-gap.zh-CN.md', 'docs/architecture.md', 'docs/architecture.zh-CN.md', 'docs/plugin-development.md', 'docs/plugin-development.zh-CN.md']) assert.ok(paths.includes(required), `missing ${required}`);
   for (const path of paths) assert.equal(/(^|\/)(?:\.git|\.worktrees|\.dsh-codeasier|node_modules|test|src|\.env(?:\..*)?)(?:\/|$)/.test(path), false, `private/development artifact packaged: ${path}`);
-  const { packageManager } = JSON.parse(await readFile(join(repository, 'package.json'), 'utf8'));
+  const { packageManager, peerDependencies } = JSON.parse(await readFile(join(repository, 'package.json'), 'utf8'));
   assert.equal(packageManager, 'pnpm@11.21.0');
   await writeFile(join(scratch, 'package.json'), JSON.stringify({ name: 'isolated-production-smoke', private: true, type: 'module', packageManager }));
   await writeFile(join(scratch, 'empty.npmrc'), '');
@@ -40,7 +40,10 @@ test('packed Host and optional entry import in a production-only project without
   Object.assign(env, { HOME: scratch, USERPROFILE: scratch, DSH_HOME: join(scratch, 'dsh-home'),
     XDG_CONFIG_HOME: join(scratch, '.config'), XDG_CACHE_HOME: join(scratch, '.cache'),
     NPM_CONFIG_USERCONFIG: join(scratch, 'empty.npmrc'), NPM_CONFIG_GLOBALCONFIG: join(scratch, 'empty.npmrc') });
-  await execute('pnpm', ['install', '--prod', '--ignore-scripts', '--lockfile=false', '--store-dir', join(scratch, 'pnpm-store'), join(scratch, packed.filename)], { cwd: scratch, env, timeout: 120_000 });
+  // A standalone import smoke has no DSH resolver. Supply the declared Host
+  // peers explicitly here; the real profile gate must use Host fallback instead.
+  const hostPeers = Object.entries(peerDependencies).filter(([name]) => name !== '@deepseek-ai/dsh' && name !== '@deepseek-harness-tui/dsh-tui').map(([name, version]) => `${name}@${version}`);
+  await execute('pnpm', ['install', '--prod', '--ignore-scripts', '--lockfile=false', '--store-dir', join(scratch, 'pnpm-store'), join(scratch, packed.filename), ...hostPeers], { cwd: scratch, env, timeout: 120_000 });
   const script = `
     import assert from 'node:assert/strict';
     import { createRequire } from 'node:module';

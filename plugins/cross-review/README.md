@@ -63,6 +63,8 @@ Local configuration is fixed at `cwd/.dsh/cross-review.json` under the owning Ag
 
 Effective precedence: **defaults < global file < local file < Host overlay < invocation**. Reviewer arrays replace, not concatenate; model-judge fields merge until the kind changes, and parent clears model-judge fields. Setup previews show the effective file/Host layers; invocation overrides are shown by a later review preview. Configuration updates affect new previews, not already frozen previews/runs. Setup approval never authorizes paid review.
 
+**Review configuration discovery:** unless an explicit invocation override is requested, omit `configuration` from `cross_review_preview {request:{target?, notes?, pack?}}`. The backend automatically loads global and local files plus the Host overlay; validating a file first is not required. If manually inspecting saved files, a missing local file from `cross_config_validate {scope:"local"}` requires continuing with `cross_config_validate {scope:"global"}`, not concluding that no configuration exists or asking for reviewer reselection. Missing-file diagnostics identify only the selected scope and state that the other scope was not checked. Even if both files are absent, Host or explicit invocation settings may supply reviewers; offer separate setup only when native preview reports missing required reviewers after layering. Only file absence permits continued discovery: malformed, unreadable or unsafe files and route/catalog failures must stop the dependent operation, not be silently skipped or masked. No paid-review consent is implied.
+
 ### First-run pitfalls
 
 Two first-run conditions can block work or mask saved settings.

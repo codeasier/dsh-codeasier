@@ -29,6 +29,8 @@ test/<id>.test.ts                # stable identity check + TODO behavioral contr
 
 The generic package exports and TypeScript include already cover new feature directories. No edit to cross-review or the root API is needed. The scaffold stays outside the aggregate bundle. Its identity test is NOT proof of migrated behavior; unresolved behavioral tests are explicitly TODO.
 
+Native Host imports (`@deepseek-ai/dsh-*`, Cordis and schemastery) belong in `peerDependencies`, with pinned `devDependencies` for repository checks. DSH profiles supply them through public runtime resolution with `autoInstallPeers: false`. Shipping a private `dsh-tools` dependency can shadow the Host registry while leaving its loop in the installation, breaking **all** tool calls through unequal scheduler symbols. Profile gates must not hide this by adding an extra `agent-loop` package; verify ordinary tools as well as the plugin's own tools.
+
 To complete a native plugin:
 
 1. Implement the Host using confirmed public DSH services. Export a valid Cordis namespace (`name`, `inject`, `Config`, `apply`), not a default catalog object. Declare required services; validate actual runtime inputs, not only editor schemas.

@@ -141,7 +141,7 @@ export class ConfigurationService {
     if (scope !== 'local' && scope !== 'global') throw new Error('Invalid configuration scope');
     const path = (await configurationPaths(cwd, this.home))[scope];
     const file = await readConfiguration(path);
-    if (!file) throw new Error('Configuration file does not exist');
+    if (!file) throw new Error(`${scope} configuration file does not exist; the ${scope === 'local' ? 'global' : 'local'} scope was not checked by this call. Use cross_review_preview without configuration to load global and local files plus the Host overlay.`);
     const configuration = file.value;
     const effective = await this.effective(cwd);
     await validateRoutes(this.ctx, effective.config);

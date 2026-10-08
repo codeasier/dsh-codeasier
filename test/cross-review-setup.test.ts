@@ -210,6 +210,52 @@ test('loader discovers only each sibling worktree fixed file, never an ancestor 
   assert.equal(f.adapter.calls.length, 0); f.noReviewers();
 });
 
+for (const scope of ['local', 'global'] as const) {
+  test(`missing ${scope} validation identifies only that scope; the other saved scope still validates`, async t => {
+    const f = await fixture(t, 'ask', [{ source: 'host-plugin', value: { concurrency: 4 } }]);
+    const other = scope === 'local' ? 'global' : 'local';
+    const saved = configuration({ timeoutMs: 444 }); const path = await f.put(other, saved);
+    const before = await readFile(path);
+    await assert.rejects(f.service.validate(f.parent, scope), {
+      message: `${scope} configuration file does not exist; the ${other} scope was not checked by this call. Use cross_review_preview without configuration to load global and local files plus the Host overlay.`,
+    });
+    const validated = await f.service.validate(f.parent, other);
+    assert.equal(validated.path, path); assert.deepEqual(validated.configuration, saved);
+    assert.deepEqual(validated.effectiveConfig, { ...saved, concurrency: 4 });
+    assert.equal(validated.sources.reviewers, `${other}:${path}`); assert.equal(validated.sources.concurrency, 'host-plugin');
+    assert.deepEqual(await readFile(path), before); await absent(configPath(scope === 'local' ? f.root : f.home));
+    assert.equal(f.adapter.calls.length, 0); f.noReviewers();
+  });
+}
+
+for (const kind of ['malformed-json', 'invalid-schema', 'unsafe-symlink', 'unavailable-model'] as const) {
+  test(`valid global configuration cannot hide a ${kind} local validation failure`, async t => {
+    const f = await fixture(t); const globalPath = await f.put('global', configuration());
+    const globalBefore = await readFile(globalPath); const localPath = configPath(f.root);
+    if (kind === 'unsafe-symlink') {
+      await mkdir(dirname(localPath)); await symlink(globalPath, localPath);
+    } else {
+      await f.put('local', kind === 'invalid-schema' ? { unexpected: true }
+        : kind === 'unavailable-model' ? { reviewers: [{ id: 'bad', provider: 'offline', model: 'missing', focus: 'Check' }] } : {});
+      if (kind === 'malformed-json') await writeFile(localPath, '{not json');
+    }
+    const localBefore = await readFile(localPath);
+    for (const scope of ['local', 'global'] as const) {
+      await assert.rejects(f.service.validate(f.parent, scope), error => {
+        assert.ok(error instanceof Error);
+        assert.doesNotMatch(error.message, /file does not exist|scope was not checked/);
+        return true;
+      });
+    }
+    // Loading validates file safety/schema, not model routes; routing is checked by validate().
+    if (kind === 'unavailable-model') assert.equal((await loadFileLayers(f.root, f.home)).length, 2);
+    else await assert.rejects(loadFileLayers(f.root, f.home));
+    assert.deepEqual(await readFile(globalPath), globalBefore); assert.deepEqual(await readFile(localPath), localBefore);
+    if (kind === 'unsafe-symlink') assert.ok((await lstat(localPath)).isSymbolicLink());
+    assert.equal(f.adapter.calls.length, 0); f.noReviewers();
+  });
+}
+
 test('configuration roots accept cwd and HOME aliases but derive only canonical fixed paths', async t => {
   const f = await fixture(t);
   const cwdAlias = join(f.scratch, 'cwd-alias'); const homeAlias = join(f.scratch, 'home-alias');

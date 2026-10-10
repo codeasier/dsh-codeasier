@@ -237,6 +237,69 @@ test('tampered hash, bytes, metadata, provenance or unknown fields reject', asyn
   assert.throws(() => validateSnapshot(getter), /enumerable data/);
 });
 
+test('only validator-created immutable snapshot identities can reuse validation', async t => {
+  const { root } = await repository(t); const snapshot = await prepareEvidence({ kind: 'local', root });
+  assert.equal(validateSnapshot(snapshot), snapshot);
+  const stored = JSON.parse(JSON.stringify(snapshot));
+  const first = validateSnapshot(stored); const second = validateSnapshot(stored);
+  assert.notEqual(first, stored); assert.notEqual(second, stored); assert.notEqual(first, second);
+  assert.equal(first.id, snapshot.id); assert.equal(validateSnapshot(first), first);
+  const frozenLookalike = Object.freeze({ ...snapshot });
+  assert.notEqual(validateSnapshot(frozenLookalike), frozenLookalike);
+  const wrapper = new Proxy(snapshot, {});
+  assert.notEqual(validateSnapshot(wrapper), wrapper);
+  const sameContent = JSON.parse(JSON.stringify(snapshot));
+  const detached = validateSnapshot(sameContent);
+  sameContent.files['main.ts'] = 'mutated caller bytes\n';
+  assert.throws(() => readEvidence(sameContent, 'main.ts'), /hash mismatch/);
+  assert.equal(readEvidence(detached, 'main.ts').lines[0]?.text, 'export const value = 1;');
+  assert.throws(() => { (detached.files as Record<string, string>)['main.ts'] = 'mutated'; }, TypeError);
+  assert.throws(() => { (detached.notes as string[]).push('mutated'); }, TypeError);
+  assert.throws(() => { (detached.target as { root: string }).root = '/mutated'; }, TypeError);
+  assert.throws(() => { (detached.provenance as { head: string }).head = '0'.repeat(40); }, TypeError);
+});
+
+test('reusing a trusted ID never admits forged or subsequently mutated inputs', async t => {
+  const { root } = await repository(t); const snapshot = await prepareEvidence({ kind: 'local', root });
+  for (const mutate of [
+    (copy: any) => { copy.files['main.ts'] = 'forged content'; },
+    (copy: any) => { copy.diff = 'forged diff'; },
+    (copy: any) => { copy.notes.push('forged context'); },
+    (copy: any) => { copy.provenance.head = '0'.repeat(40); },
+  ]) {
+    const copy = JSON.parse(JSON.stringify(snapshot)); validateSnapshot(copy); mutate(copy);
+    assert.throws(() => validateSnapshot(copy), /hash mismatch/);
+    assert.throws(() => listEvidence(copy), /hash mismatch/);
+    assert.throws(() => readEvidence(copy, 'main.ts'), /hash mismatch/);
+    Object.freeze(copy);
+    assert.throws(() => validateSnapshot(copy), /hash mismatch/);
+  }
+});
+
+test('trusted snapshots never retain caller array subclasses or invoke their mapping overrides', async t => {
+  const { root } = await repository(t); const snapshot = await prepareEvidence({ kind: 'local', root }, { notes: ['safe context'] });
+  class CallerNotes extends Array<string> {
+    override map(): never { throw new Error('caller map must not execute'); }
+    override some(): never { throw new Error('caller some must not execute'); }
+    override [Symbol.iterator](): never { throw new Error('caller iterator must not execute'); }
+  }
+  const callerNotes = new CallerNotes(); callerNotes.push('safe context');
+  const restored = validateSnapshot({ ...snapshot, notes: callerNotes });
+  assert.equal(Object.getPrototypeOf(restored.notes), Array.prototype);
+  assert.deepEqual(restored.notes, ['safe context']); assert.ok(Object.isFrozen(restored.notes));
+  callerNotes[0] = 'mutated'; assert.deepEqual(restored.notes, ['safe context']);
+  const nested = Object.assign([], { 0: { mutable: true }, length: 1, some: () => false, map: () => Object.freeze([{ mutable: true }]) });
+  assert.throws(() => validateSnapshot({ ...snapshot, notes: nested }), /invalid or oversized note/);
+});
+
+test('validation uses inspected data descriptors instead of caller-controlled Proxy reads', async t => {
+  const { root } = await repository(t); const snapshot = await prepareEvidence({ kind: 'local', root });
+  const proxy = (record: object) => new Proxy(record, { get() { throw new Error('caller get trap must not execute'); } });
+  const restored = validateSnapshot(proxy({ ...snapshot, target: proxy(snapshot.target), files: proxy(snapshot.files), provenance: proxy(snapshot.provenance!) }));
+  assert.equal(restored.id, snapshot.id); assert.equal(restored.target.root, root);
+  assert.notEqual(restored.target, snapshot.target); assert.equal(validateSnapshot(restored), restored);
+});
+
 test('memory-only evidence reads deny traversal, VCS, siblings and unlisted files', async t => {
   const { root } = await repository(t); const snapshot = await prepareEvidence({ kind: 'local', root });
   for (const path of ['../main.ts', '/etc/passwd', 'a/../main.ts', '.git/config', 'outputs/reviewer.json', 'reports/result.md', 'a\\b', 'a//b', '__proto__', 'unknown.ts']) {

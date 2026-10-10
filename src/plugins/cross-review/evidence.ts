@@ -25,6 +25,10 @@ const FILE_BYTES = 8 * 1024 * 1024;
 const TOTAL_BYTES = 64 * 1024 * 1024;
 const HASH = /^[a-f0-9]{40}(?:[a-f0-9]{24})?$/;
 const decoder = new TextDecoder('utf-8', { fatal: true });
+// Identity-only trust for detached snapshots created below, after validation and
+// deep freezing. Weak membership neither retains snapshots nor trusts caller IDs,
+// frozen lookalikes, deserialized records, or wrappers around a valid snapshot.
+const validatedSnapshots = new WeakSet<Snapshot>();
 const restricted = /^(?:\.git|\.hg|\.svn|\.dsh|\.worktrees|node_modules|\.cross-review|\.dsh-codeasier|artifacts|outputs?|reports?|credentials?|secrets?|\.npmrc|\.netrc|\.aws|\.ssh|\.env(?:\..*)?)$/i;
 const credential = /-----BEGIN (?:RSA |EC |OPENSSH |DSA )?PRIVATE KEY-----|\bAKIA[A-Z0-9]{16}\b|\b(?:gh[pousr]_[A-Za-z0-9]{20,}|github_pat_[A-Za-z0-9_]{20,})\b|\b(?:api[_-]?key|access[_-]?token|password|secret)\s*[:=]\s*["']?[A-Za-z0-9/+_-]{16,}/i;
 
@@ -48,7 +52,9 @@ function dataObject(value: unknown): Record<string, unknown> {
   if (proto !== Object.prototype && proto !== null) fail('expected plain record');
   const descriptors = Object.getOwnPropertyDescriptors(value);
   if (Reflect.ownKeys(value).some(k => typeof k !== 'string') || Object.values(descriptors).some(d => !d.enumerable || !('value' in d))) fail('record must contain only enumerable data');
-  return value as Record<string, unknown>;
+  // Read the inspected descriptor values, never a caller's Proxy get trap after
+  // validating it. Every consumer receives stable own-data fields.
+  return Object.fromEntries(Object.entries(descriptors).map(([key, descriptor]) => [key, descriptor.value]));
 }
 function keys(record: Record<string, unknown>, allowed: readonly string[]): void {
   if (Object.keys(record).some(k => !allowed.includes(k))) fail('unexpected record field');
@@ -85,6 +91,7 @@ function digest(snapshot: Omit<Snapshot, 'id'>): string { return `sha256:${creat
 
 /** Verify durable evidence and return a detached, deeply immutable snapshot. */
 export function validateSnapshot(value: unknown): Snapshot {
+  if (typeof value === 'object' && value !== null && validatedSnapshots.has(value as Snapshot)) return value as Snapshot;
   const r = dataObject(value);
   keys(r, ['id', 'version', 'target', 'diff', 'files', 'notes', 'createdAt', 'provenance']);
   if (r.version !== 1 || typeof r.id !== 'string' || !/^sha256:[a-f0-9]{64}$/.test(r.id) || !Number.isSafeInteger(r.createdAt) || (r.createdAt as number) < 0) fail('invalid snapshot identity/version/time');
@@ -96,8 +103,14 @@ export function validateSnapshot(value: unknown): Snapshot {
     files[pathKey(path)] = text(content, 'file'); bytes += Buffer.byteLength(content);
   }
   if (bytes > TOTAL_BYTES) fail('evidence exceeds byte budget');
-  if (!Array.isArray(r.notes) || r.notes.length > 100 || r.notes.some(n => typeof n !== 'string')) fail('invalid notes');
-  const notes = Object.freeze(r.notes.map(n => text(n as string, 'note', 256 * 1024)));
+  if (!Array.isArray(r.notes)) fail('invalid notes');
+  const noteCount = r.notes.length;
+  if (!Number.isSafeInteger(noteCount) || noteCount < 0 || noteCount > 100) fail('invalid notes');
+  const detachedNotes: string[] = [];
+  // Do not invoke caller-owned map/some/iterator implementations or retain an
+  // Array subclass: trusted snapshots contain only a fresh array of strings.
+  for (let i = 0; i < noteCount; i++) detachedNotes.push(text(r.notes[i] as string, 'note', 256 * 1024));
+  const notes = Object.freeze(detachedNotes);
   let provenance: Snapshot['provenance'];
   if (r.provenance !== undefined) {
     const p = dataObject(r.provenance); keys(p, ['base', 'head', 'mergeBase']);
@@ -109,7 +122,9 @@ export function validateSnapshot(value: unknown): Snapshot {
   const body: Omit<Snapshot, 'id'> = { version: 1, target, diff: text(r.diff as string, 'diff', TOTAL_BYTES), files: Object.freeze(files), notes, createdAt: r.createdAt as number,
     ...(provenance ? { provenance } : {}) };
   if (digest(body) !== r.id) fail('snapshot content hash mismatch');
-  return Object.freeze({ id: r.id, ...body });
+  const snapshot = Object.freeze({ id: r.id, ...body });
+  validatedSnapshots.add(snapshot);
+  return snapshot;
 }
 
 /** These accessors never consult the mutable workspace, Git, or a network. */

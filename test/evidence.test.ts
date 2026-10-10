@@ -47,11 +47,12 @@ function publicPr(t: TestContext, base: string, head: string, fork = false): voi
 
 // Only the test transport maps validated public remotes to local fixture repos.
 // Production Git continues to prohibit file transport and credential helpers.
-async function fixtureFetch(t: TestContext, remotes: Record<string, string>, blocked = false, unchanged = false): Promise<() => Promise<string[][]>> {
+async function fixtureFetch(t: TestContext, remotes: Record<string, string>, blocked = false, unchanged = false, mergeBaseExit?: number): Promise<() => Promise<string[][]>> {
   const scratch = await temporary(t); const log = join(scratch, 'fetches.json');
   const realGit = (await exec('which', ['git'])).stdout.trim();
   await writeFile(join(scratch, 'git'), `#!${process.execPath}\nconst fs=require('node:fs'),cp=require('node:child_process');
 const args=process.argv.slice(2); const remotes=${JSON.stringify(remotes)};
+if(args.includes('merge-base') && ${mergeBaseExit !== undefined}) process.exit(${mergeBaseExit ?? 0});
 if(args.includes('fetch')) {
  let calls=[]; try {calls=JSON.parse(fs.readFileSync(${JSON.stringify(log)},'utf8'));} catch {}
  calls.push(args); fs.writeFileSync(${JSON.stringify(log)},JSON.stringify(calls));
@@ -74,6 +75,7 @@ test('PR evidence excludes destination-only changes while explicit ranges retain
   await git(root, 'checkout', '-qb', 'destination', mergeBase);
   await writeFile(join(root, 'base-only.ts'), 'destination change\n'); const base = await commit(root);
   publicPr(t, base, head, true);
+  const calls = await fixtureFetch(t, {}, true);
   const snapshot = await prepareEvidence({ kind: 'github', root, url: 'https://github.com/owner/repo/pull/7' });
   assert.deepEqual(snapshot.provenance, { base, head, mergeBase });
   assert.match(snapshot.diff, /topic.ts/); assert.doesNotMatch(snapshot.diff, /base-only.ts/);
@@ -83,6 +85,33 @@ test('PR evidence excludes destination-only changes while explicit ranges retain
   assert.equal(validateSnapshot(snapshot).id, snapshot.id);
   const tampered = JSON.parse(JSON.stringify(snapshot)); tampered.provenance.mergeBase = base;
   assert.throws(() => validateSnapshot(tampered), /hash mismatch/);
+  assert.equal((await calls()).length, 0);
+});
+
+test('local and range evidence reject PR-only merge-base provenance', async t => {
+  const { root, base } = await repository(t);
+  for (const target of [{ kind: 'local', root }, { kind: 'range', root, base, head: base }] as const) {
+    const snapshot = await prepareEvidence(target);
+    assert.throws(() => validateSnapshot({ ...snapshot, provenance: { ...snapshot.provenance, mergeBase: base } }), /merge-base is only valid for PR evidence/);
+  }
+});
+
+test('merge-base execution failure is not reported as unrelated ancestry', async t => {
+  const { root, base } = await repository(t); publicPr(t, base, base);
+  const calls = await fixtureFetch(t, {}, true, false, 128);
+  await assert.rejects(prepareEvidence({ kind: 'github', root, url: 'https://github.com/owner/repo/pull/7' }), /^Error: Evidence: Git merge-base failed$/);
+  assert.equal((await calls()).length, 0);
+});
+
+test('deepening fetch failures identify their stage without declaring a deleted fork', async t => {
+  const { root, base: ancestor } = await repository(t);
+  await writeFile(join(root, 'main.ts'), 'base\n'); const base = await commit(root);
+  await git(root, 'checkout', '-qb', 'topic', ancestor);
+  await writeFile(join(root, 'main.ts'), 'head\n'); const head = await commit(root);
+  await writeFile(join(root, '.git', 'shallow'), `${base}\n${head}\n`);
+  publicPr(t, base, head); const calls = await fixtureFetch(t, {}, true);
+  await assert.rejects(prepareEvidence({ kind: 'github', root, url: 'https://github.com/owner/repo/pull/7' }), /during history deepening \(64 commits\); Git fetch failed \(local, network or remote access failure\)/);
+  assert.equal((await calls()).length, 1);
 });
 
 test('shallow fork histories deepen using frozen SHAs from their own remotes', async t => {
@@ -108,7 +137,7 @@ test('shallow fork histories deepen using frozen SHAs from their own remotes', a
 test('inaccessible fork history fails clearly without falling back to destination-tip evidence', async t => {
   const { root, base } = await repository(t); publicPr(t, base, '1'.repeat(40), true);
   const calls = await fixtureFetch(t, {}, true);
-  await assert.rejects(prepareEvidence({ kind: 'github', root, url: 'https://github.com/owner/repo/pull/7' }), /public PR commit history unavailable/);
+  await assert.rejects(prepareEvidence({ kind: 'github', root, url: 'https://github.com/owner/repo/pull/7' }), /public PR commit history unavailable during initial commit fetch; Git fetch failed \(local, network or remote access failure\)/);
   assert.equal((await calls()).length, 1);
 });
 
@@ -298,6 +327,36 @@ test('validation uses inspected data descriptors instead of caller-controlled Pr
   const restored = validateSnapshot(proxy({ ...snapshot, target: proxy(snapshot.target), files: proxy(snapshot.files), provenance: proxy(snapshot.provenance!) }));
   assert.equal(restored.id, snapshot.id); assert.equal(restored.target.root, root);
   assert.notEqual(restored.target, snapshot.target); assert.equal(validateSnapshot(restored), restored);
+});
+
+test('notes proxies and accessors reject without invoking caller traps in either entry point', async t => {
+  const { root } = await repository(t); const snapshot = await prepareEvidence({ kind: 'local', root }, { notes: ['safe'] });
+  let calls = 0;
+  const proxy = new Proxy(['safe'], { get() { calls++; throw new Error('caller trap'); }, getOwnPropertyDescriptor() { calls++; throw new Error('caller descriptor trap'); } });
+  const revoked = Proxy.revocable(['safe'], {}); revoked.revoke();
+  const accessor = ['safe']; Object.defineProperty(accessor, '0', { get() { calls++; throw new Error('caller getter'); } });
+  for (const notes of [proxy, revoked.proxy, accessor]) {
+    assert.throws(() => validateSnapshot({ ...snapshot, notes }), /^Error: Evidence:/);
+    await assert.rejects(prepareEvidence({ kind: 'local', root }, { notes }), /^Error: Evidence:/);
+  }
+  assert.equal(calls, 0);
+});
+
+test('preparation copies inspected option data and notes without caller reads or iteration', async t => {
+  const { root } = await repository(t);
+  class CallerNotes extends Array<string> {
+    override [Symbol.iterator](): never { throw new Error('caller iterator must not execute'); }
+    override map(): never { throw new Error('caller map must not execute'); }
+  }
+  const notes = new CallerNotes(); notes.push('safe context');
+  const proxy = <T extends object>(record: T): T => new Proxy(record, { get() { throw new Error('caller get trap must not execute'); } });
+  const pack = { 'context.txt': 'safe bytes' };
+  const pending = prepareEvidence({ kind: 'local', root }, proxy({ notes, pack: proxy(pack) }));
+  notes[0] = 'mutated'; pack['context.txt'] = 'mutated';
+  const snapshot = await pending;
+  assert.deepEqual(snapshot.notes, ['safe context']); assert.equal(Object.getPrototypeOf(snapshot.notes), Array.prototype);
+  assert.equal(snapshot.files['context.txt'], 'safe bytes');
+  await assert.rejects(prepareEvidence({ kind: 'local', root }, { notes: Array(101).fill('x') }), /Evidence: invalid notes/);
 });
 
 test('memory-only evidence reads deny traversal, VCS, siblings and unlisted files', async t => {

@@ -37,6 +37,151 @@ async function commit(root: string): Promise<string> {
   await git(root, 'add', '-A'); await git(root, 'commit', '-qm', 'change'); return git(root, 'rev-parse', 'HEAD');
 }
 
+function publicPr(t: TestContext, base: string, head: string, fork = false): void {
+  const original = globalThis.fetch; t.after(() => { globalThis.fetch = original; });
+  globalThis.fetch = async () => new Response(JSON.stringify({ number: 7,
+    base: { sha: base, repo: { clone_url: 'https://github.com/owner/repo.git' } },
+    head: { sha: head, repo: { clone_url: `https://github.com/${fork ? 'fork' : 'owner'}/repo.git` } },
+  }));
+}
+
+// Only the test transport maps validated public remotes to local fixture repos.
+// Production Git continues to prohibit file transport and credential helpers.
+async function fixtureFetch(t: TestContext, remotes: Record<string, string>, blocked = false, unchanged = false): Promise<() => Promise<string[][]>> {
+  const scratch = await temporary(t); const log = join(scratch, 'fetches.json');
+  const realGit = (await exec('which', ['git'])).stdout.trim();
+  await writeFile(join(scratch, 'git'), `#!${process.execPath}\nconst fs=require('node:fs'),cp=require('node:child_process');
+const args=process.argv.slice(2); const remotes=${JSON.stringify(remotes)};
+if(args.includes('fetch')) {
+ let calls=[]; try {calls=JSON.parse(fs.readFileSync(${JSON.stringify(log)},'utf8'));} catch {}
+ calls.push(args); fs.writeFileSync(${JSON.stringify(log)},JSON.stringify(calls));
+ if(${blocked}) process.exit(1);
+ if(${unchanged}) process.exit(0);
+ const i=args.indexOf('--'); const source=remotes[args[i+1]]; if(!source) process.exit(2);
+ args[i+1]='file://'+source;
+}
+const child=cp.spawnSync(${JSON.stringify(realGit)},['-c','protocol.file.allow=always',...args],{stdio:'inherit'});process.exit(child.status??1);
+`);
+  await chmod(join(scratch, 'git'), 0o755);
+  const path = process.env.PATH; process.env.PATH = `${scratch}:${path ?? ''}`; t.after(() => { process.env.PATH = path; });
+  return async () => { try { return JSON.parse(await readFile(log, 'utf8')); } catch { return []; } };
+}
+
+test('PR evidence excludes destination-only changes while explicit ranges retain two-tip semantics', async t => {
+  const { root, base: mergeBase } = await repository(t);
+  await git(root, 'checkout', '-qb', 'topic');
+  await writeFile(join(root, 'topic.ts'), 'PR change\n'); const head = await commit(root);
+  await git(root, 'checkout', '-qb', 'destination', mergeBase);
+  await writeFile(join(root, 'base-only.ts'), 'destination change\n'); const base = await commit(root);
+  publicPr(t, base, head, true);
+  const snapshot = await prepareEvidence({ kind: 'github', root, url: 'https://github.com/owner/repo/pull/7' });
+  assert.deepEqual(snapshot.provenance, { base, head, mergeBase });
+  assert.match(snapshot.diff, /topic.ts/); assert.doesNotMatch(snapshot.diff, /base-only.ts/);
+  const range = await prepareEvidence({ kind: 'range', root, base, head });
+  assert.deepEqual(range.provenance, { base, head }); assert.match(range.diff, /base-only.ts/);
+  await writeFile(join(root, 'later.ts'), 'branch advanced\n'); await commit(root);
+  assert.equal(validateSnapshot(snapshot).id, snapshot.id);
+  const tampered = JSON.parse(JSON.stringify(snapshot)); tampered.provenance.mergeBase = base;
+  assert.throws(() => validateSnapshot(tampered), /hash mismatch/);
+});
+
+test('shallow fork histories deepen using frozen SHAs from their own remotes', async t => {
+  const { root: upstream, base: mergeBase } = await repository(t);
+  const fork = await temporary(t);
+  await git(fork, 'clone', '-q', upstream, '.');
+  await git(fork, 'config', 'user.name', 'Evidence Test'); await git(fork, 'config', 'user.email', 'evidence@example.invalid');
+  await writeFile(join(fork, 'topic.ts'), 'fork change\n'); const head = await commit(fork);
+  await writeFile(join(upstream, 'base-only.ts'), 'destination change\n'); const base = await commit(upstream);
+  const root = await temporary(t); await git(root, 'clone', '-q', '--depth=1', `file://${upstream}`, '.');
+  publicPr(t, base, head, true);
+  const calls = await fixtureFetch(t, { 'https://github.com/owner/repo.git': upstream, 'https://github.com/fork/repo.git': fork });
+  const snapshot = await prepareEvidence({ kind: 'github', root, url: 'https://github.com/owner/repo/pull/7' });
+  assert.deepEqual(snapshot.provenance, { base, head, mergeBase });
+  assert.doesNotMatch(snapshot.diff, /base-only.ts/); assert.match(snapshot.diff, /topic.ts/);
+  const fetches = await calls(); assert.ok(fetches.some(args => args.includes('--deepen=64')));
+  for (const args of fetches) {
+    const remote = args[args.indexOf('--') + 1]; const sha = args.at(-1);
+    assert.equal(sha, remote === 'https://github.com/owner/repo.git' ? base : head);
+  }
+});
+
+test('inaccessible fork history fails clearly without falling back to destination-tip evidence', async t => {
+  const { root, base } = await repository(t); publicPr(t, base, '1'.repeat(40), true);
+  const calls = await fixtureFetch(t, {}, true);
+  await assert.rejects(prepareEvidence({ kind: 'github', root, url: 'https://github.com/owner/repo/pull/7' }), /public PR commit history unavailable/);
+  assert.equal((await calls()).length, 1);
+});
+
+test('an older merge-base in a shallow graph is not accepted while a side path is truncated', async t => {
+  const { root: upstream, base: older } = await repository(t);
+  await writeFile(join(upstream, 'base.ts'), 'shared newer change\n'); const base = await commit(upstream);
+  const tree = await git(upstream, 'rev-parse', `${base}^{tree}`);
+  const oldSide = await git(upstream, 'commit-tree', tree, '-p', older, '-m', 'old side');
+  const truncatedSide = await git(upstream, 'commit-tree', tree, '-p', base, '-m', 'new side');
+  const head = await git(upstream, 'commit-tree', tree, '-p', oldSide, '-p', truncatedSide, '-m', 'merge sides');
+  await git(upstream, 'update-ref', 'refs/heads/topic', head);
+  const root = await temporary(t); await git(root, 'clone', '-q', upstream, '.');
+  await writeFile(join(root, '.git', 'shallow'), `${truncatedSide}\n`);
+  assert.equal(await git(root, 'merge-base', base, head), older);
+  publicPr(t, base, head);
+  const calls = await fixtureFetch(t, { 'https://github.com/owner/repo.git': upstream });
+  const snapshot = await prepareEvidence({ kind: 'github', root, url: 'https://github.com/owner/repo/pull/7' });
+  assert.deepEqual(snapshot.provenance, { base, head, mergeBase: base });
+  assert.equal(snapshot.diff, ''); assert.ok((await calls()).length > 0);
+});
+
+test('unrelated PR histories reject without fetching arbitrary branch tips', async t => {
+  const { root, base } = await repository(t);
+  await git(root, 'checkout', '--orphan', 'unrelated'); await writeFile(join(root, 'main.ts'), 'unrelated\n'); const head = await commit(root);
+  publicPr(t, base, head); const calls = await fixtureFetch(t, {}, true);
+  await assert.rejects(prepareEvidence({ kind: 'github', root, url: 'https://github.com/owner/repo/pull/7' }), /no unambiguous common ancestry/);
+  assert.equal((await calls()).length, 0);
+});
+
+test('shallow ancestry fetches are bounded when the server supplies no additional history', async t => {
+  const { root, base: ancestor } = await repository(t);
+  await writeFile(join(root, 'main.ts'), 'base\n'); const base = await commit(root);
+  await git(root, 'checkout', '-qb', 'topic', ancestor);
+  await writeFile(join(root, 'main.ts'), 'head\n'); const head = await commit(root);
+  await writeFile(join(root, '.git', 'shallow'), `${base}\n${head}\n`);
+  publicPr(t, base, head); const calls = await fixtureFetch(t, {}, false, true);
+  await assert.rejects(prepareEvidence({ kind: 'github', root, url: 'https://github.com/owner/repo/pull/7' }), /bounded shallow-history fetches/);
+  const fetches = await calls(); assert.equal(fetches.length, 6);
+  assert.deepEqual(fetches.map(args => args.find(arg => arg.startsWith('--deepen='))),
+    ['--deepen=64', '--deepen=64', '--deepen=256', '--deepen=256', '--deepen=1024', '--deepen=1024']);
+});
+
+test('deleted fork metadata rejects before any history fetch', async t => {
+  const { root, base } = await repository(t); const original = globalThis.fetch;
+  t.after(() => { globalThis.fetch = original; });
+  globalThis.fetch = async () => new Response(JSON.stringify({ number: 7,
+    base: { sha: base, repo: { clone_url: 'https://github.com/owner/repo.git' } }, head: { sha: base, repo: null },
+  }));
+  const calls = await fixtureFetch(t, {}, true);
+  await assert.rejects(prepareEvidence({ kind: 'github', root, url: 'https://github.com/owner/repo/pull/7' }), /PR head repository unavailable/);
+  assert.equal((await calls()).length, 0);
+});
+
+test('a genuine unrelated root merged after the common ancestor is not mistaken for shallow history', async t => {
+  const { root, base } = await repository(t); const tree = await git(root, 'rev-parse', `${base}^{tree}`);
+  const otherRoot = await git(root, 'commit-tree', tree, '-m', 'independent root');
+  const head = await git(root, 'commit-tree', tree, '-p', base, '-p', otherRoot, '-m', 'merge root');
+  publicPr(t, base, head); const calls = await fixtureFetch(t, {}, true);
+  const snapshot = await prepareEvidence({ kind: 'github', root, url: 'https://github.com/owner/repo/pull/7' });
+  assert.deepEqual(snapshot.provenance, { base, head, mergeBase: base }); assert.equal((await calls()).length, 0);
+});
+
+test('multiple best merge-bases reject rather than selecting an arbitrary PR scope', async t => {
+  const { root, base: ancestor } = await repository(t); const tree = await git(root, 'rev-parse', `${ancestor}^{tree}`);
+  const left = await git(root, 'commit-tree', tree, '-p', ancestor, '-m', 'left');
+  const right = await git(root, 'commit-tree', tree, '-p', ancestor, '-m', 'right');
+  const base = await git(root, 'commit-tree', tree, '-p', left, '-p', right, '-m', 'base');
+  const head = await git(root, 'commit-tree', tree, '-p', right, '-p', left, '-m', 'head');
+  publicPr(t, base, head); const calls = await fixtureFetch(t, {}, true);
+  await assert.rejects(prepareEvidence({ kind: 'github', root, url: 'https://github.com/owner/repo/pull/7' }), /multiple merge-bases/);
+  assert.equal((await calls()).length, 0);
+});
+
 test('local capture contains complete staged, unstaged, deleted and untracked changes', async t => {
   const { root, base } = await repository(t);
   await writeFile(join(root, 'removed.ts'), 'removed\n'); await commit(root);
@@ -172,7 +317,7 @@ for (const kind of ['github', 'gitcode'] as const) {
       return new Response(JSON.stringify({ number: 7, base: { sha: base, repo: { clone_url: remote, html_url: remote } }, head: { sha: head, repo: { clone_url: remote, html_url: remote } } }));
     };
     const snapshot = await prepareEvidence({ kind, root, url: `https://${kind === 'github' ? 'github.com/owner/repo/pull' : 'gitcode.com/owner/repo/pulls'}/7` });
-    assert.deepEqual(snapshot.provenance, { base, head }); assert.equal(snapshot.files['main.ts'], 'remote version\n');
+    assert.deepEqual(snapshot.provenance, { base, head, mergeBase: base }); assert.equal(snapshot.files['main.ts'], 'remote version\n');
     assert.equal(snapshot.target.kind, kind); assert.equal(requests, 1);
     if (snapshot.target.kind === 'gitcode') assert.match(snapshot.target.url, /merge_requests\/7$/);
   });

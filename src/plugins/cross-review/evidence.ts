@@ -132,13 +132,16 @@ function gitEnvironment(): NodeJS.ProcessEnv {
   for (const name of Object.keys(env)) if (name.startsWith('GIT_')) delete env[name];
   return { ...env, GIT_TERMINAL_PROMPT: '0', GIT_OPTIONAL_LOCKS: '0', GIT_CONFIG_NOSYSTEM: '1', GIT_CONFIG_GLOBAL: '/dev/null' };
 }
+class GitFailure extends Error {
+  constructor(operation: string, readonly noMergeBase: boolean) { super(`Evidence: Git ${operation} failed`); }
+}
 async function git(root: string, args: readonly string[]): Promise<Buffer> {
   return new Promise((resolvePromise, reject) => {
     execFile('git', ['-c', 'core.fsmonitor=false', '-c', 'core.hooksPath=/dev/null', '-c', 'credential.helper=', '-c', 'http.extraHeader=', '-c', 'core.askPass=',
       '-c', 'protocol.allow=never', '-c', 'protocol.https.allow=always', ...args],
     { cwd: root, env: gitEnvironment(), encoding: 'buffer', maxBuffer: TOTAL_BYTES, timeout: 60_000 }, (error, stdout) => {
       // Never expose stderr, arguments, remote URL credentials, or environment values.
-      if (error) reject(new Error(`Evidence: Git ${args[0] ?? 'operation'} failed`)); else resolvePromise(stdout);
+      if (error) reject(new GitFailure(args[0] ?? 'operation', args[0] === 'merge-base' && error.code === 1 && !error.killed && !error.signal)); else resolvePromise(stdout);
     });
   });
 }
@@ -303,7 +306,10 @@ async function remoteCommits(target: Extract<EvidenceTarget, { kind: 'github' | 
     }
     let ancestors: string[] = [];
     try { ancestors = (await git(target.root, ['merge-base', '--all', base, head])).toString('utf8').trim().split('\n').filter(Boolean).map(sha); }
-    catch { /* An absent merge-base may be a shallow boundary; never use a tip as fallback. */ }
+    catch (error) {
+      // Git exits 1 for no common ancestor. Execution failures are not graph facts.
+      if (!(error instanceof GitFailure) || !error.noMergeBase) throw error;
+    }
     if (ancestors.length > 1) fail('PR has multiple merge-bases; resolve ambiguous ancestry before retrying');
     if (ancestors.length === 1) {
       const mergeBase = ancestors[0]!;
@@ -327,7 +333,7 @@ async function remoteCommits(target: Extract<EvidenceTarget, { kind: 'github' | 
 
 async function fetchHistory(root: string, remote: string, commit: string, depth: string): Promise<void> {
   try { await git(root, ['fetch', '--no-tags', '--no-recurse-submodules', depth, '--', remote, commit]); }
-  catch { fail('public PR commit history unavailable; inaccessible or deleted forks require a host adapter'); }
+  catch { fail(`public PR commit history unavailable during ${depth.startsWith('--deepen=') ? `history deepening (${depth.slice(9)} commits)` : 'initial commit fetch'}; Git fetch failed (local, network or remote access failure); verify repository health and public commit access before retrying`); }
 }
 
 /** Host preparation only. No credentials are read or sent; reviewers receive only frozen bytes. */

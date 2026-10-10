@@ -18,7 +18,7 @@ export interface Snapshot {
   readonly notes: readonly string[];
   readonly createdAt: number;
   /** Resolved immutable commits; local files/diff additionally belong to the content hash. */
-  readonly provenance?: Readonly<{ base: string; head: string }>;
+  readonly provenance?: Readonly<{ base: string; head: string; mergeBase?: string }>;
 }
 
 const FILE_BYTES = 8 * 1024 * 1024;
@@ -100,8 +100,9 @@ export function validateSnapshot(value: unknown): Snapshot {
   const notes = Object.freeze(r.notes.map(n => text(n as string, 'note', 256 * 1024)));
   let provenance: Snapshot['provenance'];
   if (r.provenance !== undefined) {
-    const p = dataObject(r.provenance); keys(p, ['base', 'head']);
-    provenance = Object.freeze({ base: sha(p.base), head: sha(p.head) });
+    const p = dataObject(r.provenance); keys(p, ['base', 'head', 'mergeBase']);
+    if (p.mergeBase !== undefined && target.kind !== 'github' && target.kind !== 'gitcode') fail('merge-base is only valid for PR evidence');
+    provenance = Object.freeze({ base: sha(p.base), head: sha(p.head), ...(p.mergeBase !== undefined ? { mergeBase: sha(p.mergeBase) } : {}) });
   }
   if (target.kind !== 'local' && !provenance) fail('immutable commit provenance required');
   if (target.kind === 'range' && (provenance!.base !== target.base || provenance!.head !== target.head)) fail('range provenance mismatch');
@@ -131,13 +132,16 @@ function gitEnvironment(): NodeJS.ProcessEnv {
   for (const name of Object.keys(env)) if (name.startsWith('GIT_')) delete env[name];
   return { ...env, GIT_TERMINAL_PROMPT: '0', GIT_OPTIONAL_LOCKS: '0', GIT_CONFIG_NOSYSTEM: '1', GIT_CONFIG_GLOBAL: '/dev/null' };
 }
+class GitFailure extends Error {
+  constructor(operation: string, readonly noMergeBase: boolean) { super(`Evidence: Git ${operation} failed`); }
+}
 async function git(root: string, args: readonly string[]): Promise<Buffer> {
   return new Promise((resolvePromise, reject) => {
     execFile('git', ['-c', 'core.fsmonitor=false', '-c', 'core.hooksPath=/dev/null', '-c', 'credential.helper=', '-c', 'http.extraHeader=', '-c', 'core.askPass=',
       '-c', 'protocol.allow=never', '-c', 'protocol.https.allow=always', ...args],
     { cwd: root, env: gitEnvironment(), encoding: 'buffer', maxBuffer: TOTAL_BYTES, timeout: 60_000 }, (error, stdout) => {
       // Never expose stderr, arguments, remote URL credentials, or environment values.
-      if (error) reject(new Error(`Evidence: Git ${args[0] ?? 'operation'} failed`)); else resolvePromise(stdout);
+      if (error) reject(new GitFailure(args[0] ?? 'operation', args[0] === 'merge-base' && error.code === 1 && !error.killed && !error.signal)); else resolvePromise(stdout);
     });
   });
 }
@@ -265,7 +269,7 @@ function repositoryUrl(kind: 'github' | 'gitcode', value: unknown): string {
   const [owner, repo] = url.pathname.slice(1).replace(/\.git$/, '').split('/'); pathKey(owner!); pathKey(repo!);
   return `https://${host}/${owner}/${repo}.git`;
 }
-async function remoteCommits(target: Extract<EvidenceTarget, { kind: 'github' | 'gitcode' }>): Promise<{ base: string; head: string }> {
+async function remoteCommits(target: Extract<EvidenceTarget, { kind: 'github' | 'gitcode' }>): Promise<{ base: string; head: string; mergeBase: string }> {
   const parsed = prUrl(target.kind, target.url);
   const endpoint = target.kind === 'github' ? `https://api.github.com/repos/${parsed.owner}/${parsed.repo}/pulls/${parsed.number}`
     : `https://api.gitcode.com/api/v5/repos/${parsed.owner}/${parsed.repo}/pulls/${parsed.number}`;
@@ -279,15 +283,57 @@ async function remoteCommits(target: Extract<EvidenceTarget, { kind: 'github' | 
   const metadata = dataObject(value);
   if (metadata.number !== Number(parsed.number)) fail('PR metadata identity mismatch');
   const commits: Record<string, string> = Object.create(null) as Record<string, string>;
+  const remotes: Record<string, string> = Object.create(null) as Record<string, string>;
+  // Validate both sides before fetching anything. Deleted/inaccessible forks fail closed.
   for (const side of ['base', 'head'] as const) {
-    const ref = dataObject(metadata[side]); const commit = sha(ref.sha); const repo = dataObject(ref.repo);
+    const ref = dataObject(metadata[side]); const commit = sha(ref.sha);
+    if (!ref.repo) fail(`PR ${side} repository unavailable; restore public commit access before retrying`);
+    const repo = dataObject(ref.repo);
     const remote = repositoryUrl(target.kind, target.kind === 'github' ? repo.clone_url : repo.html_url);
-    commits[side] = commit;
+    commits[side] = commit; remotes[side] = remote;
+  }
+  for (const side of ['base', 'head'] as const) {
+    const commit = commits[side]!;
     try { await git(target.root, ['cat-file', '-e', `${commit}^{commit}`]); }
-    catch { await git(target.root, ['fetch', '--no-tags', '--no-recurse-submodules', '--depth=1', '--', remote, commit]); }
+    catch { await fetchHistory(target.root, remotes[side]!, commit, '--depth=64'); }
     if (await revision(target.root, commit) !== commit) fail('fetched commit identity mismatch');
   }
-  return { base: commits.base!, head: commits.head! };
+  const base = commits.base!; const head = commits.head!;
+  // Never substitute the destination tip or a moving branch when ancestry is missing.
+  for (const deepen of [0, 64, 256, 1024]) {
+    if (deepen) for (const side of ['base', 'head'] as const) {
+      await fetchHistory(target.root, remotes[side]!, commits[side]!, `--deepen=${deepen}`);
+    }
+    let ancestors: string[] = [];
+    try { ancestors = (await git(target.root, ['merge-base', '--all', base, head])).toString('utf8').trim().split('\n').filter(Boolean).map(sha); }
+    catch (error) {
+      // Git exits 1 for no common ancestor. Execution failures are not graph facts.
+      if (!(error instanceof GitFailure) || !error.noMergeBase) throw error;
+    }
+    if (ancestors.length > 1) fail('PR has multiple merge-bases; resolve ambiguous ancestry before retrying');
+    if (ancestors.length === 1) {
+      const mergeBase = ancestors[0]!;
+      // A shallow side branch can hide a better common ancestor, even when Git
+      // already reports one. A parentless traversal entry whose actual commit
+      // has parents is a shallow boundary, not a genuine unrelated root.
+      const above = (await git(target.root, ['rev-list', '--parents', base, head, '--not', mergeBase])).toString('utf8').trim();
+      let truncated = false;
+      for (const line of above ? above.split('\n') : []) if (!line.includes(' ')) {
+        const header = (await git(target.root, ['cat-file', '-p', sha(line)])).toString('utf8').split('\n\n', 1)[0]!;
+        if (/^parent /m.test(header)) { truncated = true; break; }
+      }
+      if (!truncated) return { base, head, mergeBase };
+    }
+    if ((await git(target.root, ['rev-parse', '--is-shallow-repository'])).toString('utf8').trim() !== 'true') {
+      fail('PR has no unambiguous common ancestry; cannot prepare a PR diff');
+    }
+  }
+  return fail('PR merge-base unavailable within bounded shallow-history fetches; deepen both immutable commit histories before retrying');
+}
+
+async function fetchHistory(root: string, remote: string, commit: string, depth: string): Promise<void> {
+  try { await git(root, ['fetch', '--no-tags', '--no-recurse-submodules', depth, '--', remote, commit]); }
+  catch { fail(`public PR commit history unavailable during ${depth.startsWith('--deepen=') ? `history deepening (${depth.slice(9)} commits)` : 'initial commit fetch'}; Git fetch failed (local, network or remote access failure); verify repository health and public commit access before retrying`); }
 }
 
 /** Host preparation only. No credentials are read or sent; reviewers receive only frozen bytes. */
@@ -301,7 +347,7 @@ export async function prepareEvidence(target: EvidenceTarget, options: { notes?:
   const input = { ...dataObject(target) };
   const root = await rootPath(input.root as string);
   let fixed: EvidenceTarget;
-  let provenance: { base: string; head: string };
+  let provenance: { base: string; head: string; mergeBase?: string };
   let captured: { diff: string; files: Record<string, string> };
   if (input.kind === 'local') {
     keys(input, ['kind', 'root']); fixed = { kind: 'local', root };
@@ -314,12 +360,13 @@ export async function prepareEvidence(target: EvidenceTarget, options: { notes?:
     fixed = { kind: 'range', root, ...provenance }; captured = await rangeCapture(root, provenance.base, provenance.head);
   } else if (input.kind === 'github' || input.kind === 'gitcode') {
     keys(input, ['kind', 'root', 'url']); fixed = { kind: input.kind, root, url: prUrl(input.kind, input.url).url };
-    provenance = await remoteCommits(fixed); captured = await rangeCapture(root, provenance.base, provenance.head);
+    provenance = await remoteCommits(fixed); captured = await rangeCapture(root, provenance.mergeBase!, provenance.head);
   } else return fail('unknown target kind');
   const reserved = new Set([
     ...paths(await git(root, ['ls-files', '--cached', '-z'])),
     ...paths(await git(root, ['ls-tree', '-r', '--name-only', '-z', provenance.base])),
     ...paths(await git(root, ['ls-tree', '-r', '--name-only', '-z', provenance.head])),
+    ...(provenance.mergeBase ? paths(await git(root, ['ls-tree', '-r', '--name-only', '-z', provenance.mergeBase])) : []),
   ]);
   for (const [path, content] of Object.entries(pack)) {
     if (Object.hasOwn(captured.files, path) || reserved.has(path)) fail('pack may not replace repository evidence');
